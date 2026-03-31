@@ -2,12 +2,18 @@
 
 本仓库将 [NanmiCoder/MediaCrawler](https://github.com/NanmiCoder/MediaCrawler) 以 **git submodule** 形式固定在 `third_party/MediaCrawler`，便于同步上游更新、在本机运行采集后把脚本与产出推送到你自己的 GitHub。
 
-**建议远端**：在 [Sodamax778 的 GitHub](https://github.com/Sodamax778?tab=repositories) 上新建空仓库（或使用已有仓库），将本目录推送到该远端，例如：
+**当前约定远端**：[Sodamax778/expert-eureka](https://github.com/Sodamax778/expert-eureka)（`https://github.com/Sodamax778/expert-eureka.git`）。若本机尚未配置 `origin`，执行：
 
 ```bash
-git remote add origin https://github.com/Sodamax778/<你的仓库名>.git
+git remote add origin https://github.com/Sodamax778/expert-eureka.git
 git push -u origin main
 ```
+
+若已存在错误的 `origin`，可改为：`git remote set-url origin https://github.com/Sodamax778/expert-eureka.git`。
+
+**推送报错 `fatal: 'origin' does not appear to be a git repository`**：说明未添加名为 `origin` 的远程，按上面 `git remote add` 即可。
+
+若你希望改用其他仓库名，在 GitHub 新建空库后执行 `git remote set-url origin https://github.com/Sodamax778/<新仓库>.git`。
 
 ## 环境与依赖
 
@@ -20,8 +26,8 @@ git push -u origin main
 ## 首次克隆（含子模块）
 
 ```bash
-git clone --recurse-submodules https://github.com/Sodamax778/<你的仓库名>.git
-cd <你的仓库名>
+git clone --recurse-submodules https://github.com/Sodamax778/expert-eureka.git
+cd expert-eureka
 ```
 
 若已克隆但未拉取子模块：
@@ -80,4 +86,4 @@ uv run main.py --platform xhs --lt qrcode --type search
 - `scripts/export_xhs_to_md.py` — 从 JSONL 等导出 Markdown
 - `output/` — Markdown 产物
 
-流程就绪后：本机运行采集 → 导出 → `git add` / `commit` / `push` 到 `https://github.com/Sodamax778/<仓库名>.git`。
+流程就绪后：本机运行采集 → 导出 → `git add` / `commit` / `push` 到 `https://github.com/Sodamax778/expert-eureka.git`。
