@@ -15,6 +15,20 @@ git push -u origin main
 
 若你希望改用其他仓库名，在 GitHub 新建空库后执行 `git remote set-url origin https://github.com/Sodamax778/<新仓库>.git`。
 
+### GitHub 推送身份验证（HTTPS）
+
+出现 **`Password authentication is not supported`** 时：GitHub 已不允许用「账户登录密码」推代码，需使用 **Personal Access Token（PAT）** 或改用 **SSH**。
+
+使用 HTTPS 时，终端出现 `Username for 'https://github.com':` 后：
+
+- **Username**：只填你的 GitHub 用户名（例如 `Sodamax778`），**不要**把整行 `git remote add ...` 或其它命令粘进去。
+- **Password**：粘贴 PAT（在 GitHub → Settings → Developer settings → Personal access tokens 创建，勾选 `repo` 权限）。
+
+更省事的方式：
+
+- 安装 [GitHub CLI](https://cli.github.com/) 后执行 `gh auth login`，按提示登录；再在同一目录执行 `git push`。
+- 或改用 SSH：将 `origin` 设为 `git@github.com:Sodamax778/expert-eureka.git`，并先在 GitHub 账户里添加本机 SSH 公钥。
+
 ## 环境与依赖
 
 - **Python**：建议用 [uv](https://docs.astral.sh/uv/) 管理依赖（与上游 MediaCrawler 一致）。
