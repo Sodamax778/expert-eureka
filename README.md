@@ -101,6 +101,20 @@ uv run playwright install   # 或 uv run playwright install chromium，按上游
 | 只输入了 `sync` | 少了前面的 `uv` | 正确是 **`uv sync`**（在已进入 `MediaCrawler` 目录后执行） |
 | `command not found: uv` | 未安装 `uv`，或终端是安装前开的 | 安装：在终端执行 `curl -LsSf https://astral.sh/uv/install.sh \| sh`，然后**关掉终端再开**，或执行 `source ~/.zshrc`；确认 `uv` 在 `~/.local/bin` |
 
+### `uv sync` / `playwright install` / `main.py` 各自做什么？
+
+| 命令 | 作用 | 关系 |
+|------|------|------|
+| **`uv sync`** | 按子模块里的项目配置，下载并安装 **Python 依赖包**（装在 `MediaCrawler/.venv`） | 先做这一步，爬虫代码才能跑 |
+| **`uv run playwright install`** | 再下载 **自动化用的浏览器内核**（Chromium 等）到本机缓存，供打开网页、扫码登录 | 依赖已在上一步装好；没有浏览器，程序无法打开小红书页面 |
+| **`uv run main.py --platform xhs ...`** | **真正开始爬**：读 `config/base_config.py` 里的 `KEYWORDS`，打开浏览器、登录、搜索、把结果写入 `data/` | 必须单独占一行执行；若与别的命令粘在同一行，可能不会运行 |
+
+若上游配置里 **`ENABLE_CDP_MODE = True`**，程序会尝试连接**本机已安装的 Chrome** 的调试端口，而不是刚装的 Playwright 浏览器，容易表现为窗口不对或终端「很久没新输出」。**本仓库建议在同步关键词时加 `--no-cdp`**，已写入 `ENABLE_CDP_MODE = False`。
+
+**关于「想用 Safari」**：本爬虫基于 **Playwright**，只能驱动其自带的 **Chromium / Firefox / WebKit 引擎**。**不能**改成你 Mac 里默认的 **Safari.app**（苹果未提供与 Playwright 相同的自动化接口）。你看到的「像 Chrome 的浏览器」一般是 **Playwright 的 Chromium**，属正常。若需要接近 Safari 的排版，可研究上游是否支持 WebKit 通道，但**仍不是桌面 Safari**，且可能与反爬脚本不兼容，本仓库默认不切换。
+
+**页面一闪就关**：常见原因是首页一直等 `load` 事件超时，进程报错退出后浏览器被关掉。同步脚本默认会给 `media_platform/xhs/core.py` 打补丁（`domcontentloaded` + 更长超时）；另建议加 **`--keep-browser-open`**，让任务跑完后也不自动关窗口，方便扫码。
+
 ### 小红书关键词搜索（二维码登录）
 
 ```bash
@@ -116,7 +130,7 @@ uv run main.py --platform xhs --lt qrcode --type search
 | 路径 | 作用 |
 |------|------|
 | `config/keywords_xhs_boox.yaml` | BOOX/文石相关搜索词，按分组维护 |
-| `scripts/sync_keywords_to_medcrawler.py` | 写入子模块 `config/base_config.py` 的 `KEYWORDS`，并将 `xhs_config.SORT_TYPE` 设为 `time_descending`（最新优先，可用 `--no-sort-latest` 关闭） |
+| `scripts/sync_keywords_to_medcrawler.py` | 写入 `KEYWORDS`、`SORT_TYPE`；**建议 `--no-cdp --keep-browser-open`**；并默认给小红书 `core.py` 打首页 `goto` 补丁（可用 `--skip-xhs-goto-patch` 关闭） |
 | `scripts/export_xhs_to_md.py` | 读取上述 JSONL，按笔记 `time` 过滤最近 N 天（默认 90），生成原始文本导向的 Markdown |
 | `output/` | 建议将导出 `.md` 放在此目录并纳入版本管理 |
 | `requirements-scripts.txt` | 仅脚本依赖：`PyYAML`（与 MediaCrawler 的 `uv` 环境分离） |
@@ -130,11 +144,12 @@ bash scripts/fix_submodule_and_sync.sh   # 可选：子模块已完整时可跳�
 
 pip install -r requirements-scripts.txt   # 或 uv pip install -r requirements-scripts.txt
 
-python scripts/sync_keywords_to_medcrawler.py
+python scripts/sync_keywords_to_medcrawler.py --no-cdp --keep-browser-open
 
 cd third_party/MediaCrawler
-uv sync && uv run playwright install
-uv run main.py --platform xhs --lt qrcode --type search
+uv sync
+uv run playwright install    # 若先出现 400 再自动换镜像下载，属正常；第二次运行可能几乎无输出
+uv run main.py --platform xhs --lt qrcode --type search   # 单独一行执行，勿与上一行粘在一起
 
 cd ../..
 python scripts/export_xhs_to_md.py --since-days 90 --out output/xhs_boox_raw_$(date +%Y-%m-%d).md

@@ -43,7 +43,7 @@ cd "$ROOT"
 pip3 install -r requirements-scripts.txt
 
 echo "== 4/4 同步 YAML 关键词到 MediaCrawler"
-python3 scripts/sync_keywords_to_medcrawler.py
+python3 scripts/sync_keywords_to_medcrawler.py --no-cdp --keep-browser-open
 
 echo ""
 echo "完成。下一步："
