@@ -52,6 +52,16 @@ git submodule update --init --recursive
 
 在子模块尚未成功检出前，本机 `git status` 可能显示 `third_party/MediaCrawler` 为未同步/删除，属正常现象；待上述命令在本机网络可达 GitHub 时执行成功后，工作区会恢复为已检出的子模块目录。
 
+### 子模块下载失败（`curl 18` / `early EOF` / `RPC failed`）
+
+多为网络不稳定导致 Git 传输中断。可换 Wi‑Fi、手机热点或稍后重试，然后在**仓库根目录**执行一键修复（会浅拉固定版本并同步关键词）：
+
+```bash
+bash scripts/fix_submodule_and_sync.sh
+```
+
+**终端使用注意**：请**每次只粘贴一行命令**并按回车；不要把多行命令粘在同一行，否则后面的 `pip`、`python` 不会执行。
+
 ## 子模块固定版本（pinned commit）
 
 当前子模块指向上游 **固定 commit**（非「始终跟踪 main」）：
@@ -102,11 +112,14 @@ uv run main.py --platform xhs --lt qrcode --type search
 | `scripts/export_xhs_to_md.py` | 读取上述 JSONL，按笔记 `time` 过滤最近 N 天（默认 90），生成原始文本导向的 Markdown |
 | `output/` | 建议将导出 `.md` 放在此目录并纳入版本管理 |
 | `requirements-scripts.txt` | 仅脚本依赖：`PyYAML`（与 MediaCrawler 的 `uv` 环境分离） |
+| `scripts/fix_submodule_and_sync.sh` | 网络导致子模块不完整时：拉齐代码并执行关键词同步 |
 
 ### 推荐流程（本机）
 
 ```bash
 # 仓库根目录
+bash scripts/fix_submodule_and_sync.sh   # 可选：子模块已完整时可跳过，直接下面两行
+
 pip install -r requirements-scripts.txt   # 或 uv pip install -r requirements-scripts.txt
 
 python scripts/sync_keywords_to_medcrawler.py

@@ -104,7 +104,8 @@ def main() -> int:
         re.compile(r"^KEYWORDS\s*=\s*.+$", re.MULTILINE),
         keywords_line,
     )
-    base_config.write_text(text, encoding="utf-8", newline="\n")
+    with base_config.open("w", encoding="utf-8", newline="\n") as f:
+        f.write(text)
     print(f"已写入 {len(keywords)} 个关键词到 {base_config}（keywords_version={version!r}）")
 
     if sort_latest and xhs_config.is_file():
@@ -114,7 +115,8 @@ def main() -> int:
             re.compile(r"^SORT_TYPE\s*=\s*.+$", re.MULTILINE),
             'SORT_TYPE = "time_descending"',
         )
-        xhs_config.write_text(xhs_text, encoding="utf-8", newline="\n")
+        with xhs_config.open("w", encoding="utf-8", newline="\n") as f:
+            f.write(xhs_text)
         print(f"已将 SORT_TYPE 设为 time_descending: {xhs_config}")
 
     print(
