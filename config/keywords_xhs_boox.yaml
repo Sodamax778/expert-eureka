@@ -1,28 +1,66 @@
-# BOOX / 文石 小红书搜索关键词（供 sync_keywords_to_medcrawler.py 写入上游 base_config.KEYWORDS）
-# MediaCrawler 要求：英文逗号分隔，本文件按分组维护，同步时按分组顺序展开并去重（保留首次出现顺序）。
-version: "1"
+# BOOX / 文石 小红书搜索关键词
+# - 按系列分组：便于后续按组导出独立 md（按 source_keyword 过滤）或合并为一次 KEYWORDS 同步。
+# - MediaCrawler：sync_keywords_to_medcrawler.py 按下方分组顺序展开并去重后写入 base_config.KEYWORDS。
+version: "2"
 
 groups:
+  # ---------- P6 系统 ----------
   p6_system:
     - 文石 P6
     - BOOX P6
     - P6 系统
     - 文石P6
+    # 与系统体验相关的组合
     - 文石 P6 卡顿
+    - 文石 P6 更新
     - 文石 P6 固件
-  leaf5:
+    - 文石 P6 系统更新
+    - P6 系统 卡顿
+    - 文石 P6 续航
+    - 文石 P6 闪退
+    - BOOX P6 固件
+
+  # ---------- Leaf5 系列 ----------
+  leaf5_series:
     - 文石 Leaf5
     - Leaf5
     - Leaf5C
     - 文石 Leaf5C
-  t10c:
+
+  # ---------- T10C 系列 ----------
+  t10c_series:
     - 文石 Tab10C
     - Tab10C
     - Tab10C Pro
     - T10C
     - 文石 T10C
+
+  # ---------- AI 向（与上面交叉：后缀或独立行）----------
   ai_cross:
-    - 文石 阅读器 AI
+    # 独立行（泛 AI）
     - BOOX AI
-    - 文石 语音
-    - 文石 OCR
+    - 文石 AI
+    - 文石 阅读器 AI
+    # P6 × AI/智能/语音/划线
+    - 文石 P6 AI
+    - 文石 P6 智能
+    - 文石 P6 语音
+    - 文石 P6 划线
+    - BOOX P6 AI
+    - BOOX P6 智能
+    - P6 系统 AI
+    # Leaf5 × …
+    - Leaf5 AI
+    - Leaf5 智能
+    - 文石 Leaf5 语音
+    - 文石 Leaf5 划线
+    - Leaf5C AI
+    - 文石 Leaf5C 智能
+    # T10C / Tab10C × …
+    - Tab10C AI
+    - Tab10C 智能
+    - Tab10C 语音
+    - 文石 Tab10C 划线
+    - T10C AI
+    - 文石 T10C 智能
+    - Tab10C Pro AI

@@ -121,4 +121,6 @@ python scripts/export_xhs_to_md.py --since-days 90 --out output/xhs_boox_raw_$(d
 
 说明：`export_xhs_to_md.py` 默认从 `third_party/MediaCrawler/data/xhs/jsonl/` 收集所有 `search_contents_*.jsonl` / `search_comments_*.jsonl`；也可用 `--contents`、`--comments` 指定文件。
 
+按系列单独出 md（与 `config/keywords_xhs_boox.yaml` 中 `groups` 键名一致）：加 `--group`，例如 `--group p6_system`、`leaf5_series`、`t10c_series`、`ai_cross`（按 `source_keyword` 与 YAML 中该组词条精确匹配过滤）。
+
 完成后：`git add` / `commit` / `push` 到 `https://github.com/Sodamax778/expert-eureka.git`。

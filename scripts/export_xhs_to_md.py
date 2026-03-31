@@ -12,6 +12,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+try:
+    import yaml
+except ImportError:
+    yaml = None  # type: ignore
+
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parent.parent
@@ -62,6 +67,27 @@ def _discover_jsonl(data_dir: Path, prefix: str) -> list[Path]:
     return sorted(data_dir.glob(f"{prefix}_*.jsonl"))
 
 
+def _keywords_for_group(yaml_path: Path, group_name: str) -> set[str]:
+    if yaml is None:
+        raise RuntimeError("按分组过滤需要 PyYAML，请执行: pip install -r requirements-scripts.txt")
+    data = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
+    groups = data.get("groups") or {}
+    if group_name not in groups:
+        names = ", ".join(sorted(groups.keys())) or "(无)"
+        raise ValueError(f"未知分组 {group_name!r}。可选: {names}")
+    raw = groups[group_name]
+    if not isinstance(raw, list):
+        raise ValueError(f"分组 {group_name!r} 应为列表")
+    out: set[str] = set()
+    for item in raw:
+        if item is None:
+            continue
+        s = str(item).strip()
+        if s and not s.startswith("#"):
+            out.add(s)
+    return out
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--since-days", type=int, default=90, help="只保留笔记发布时间在最近 N 天内")
@@ -95,7 +121,14 @@ def main() -> int:
         "--keywords-version-file",
         type=Path,
         default=_repo_root() / "config" / "keywords_xhs_boox.yaml",
-        help="用于 front matter 的 keywords_version（读取其中 version 字段）",
+        help="用于 front matter 的 keywords_version（读取其中 version 字段）；与 --group 共用同一文件",
+    )
+    parser.add_argument(
+        "--group",
+        type=str,
+        default=None,
+        metavar="NAME",
+        help="仅保留 source_keyword 属于该 YAML 分组下列词的笔记（如 p6_system、leaf5_series、t10c_series、ai_cross）；不设则合并全部分组",
     )
     parser.add_argument(
         "--out",
@@ -104,6 +137,14 @@ def main() -> int:
         help="输出 Markdown 路径，例如 output/xhs_boox_raw_2026-03-31.md",
     )
     args = parser.parse_args()
+
+    group_keywords: set[str] | None = None
+    if args.group:
+        try:
+            group_keywords = _keywords_for_group(args.keywords_version_file, args.group)
+        except (OSError, ValueError, RuntimeError) as e:
+            print(str(e), file=sys.stderr)
+            return 1
 
     data_dir = args.data_dir or (args.mc_root / "data" / "xhs" / "jsonl")
 
@@ -143,6 +184,10 @@ def main() -> int:
             t = _note_time_to_epoch_seconds(row.get("last_update_time"))
         if t is None or t < cutoff:
             continue
+        if group_keywords is not None:
+            sk = (row.get("source_keyword") or "").strip()
+            if sk not in group_keywords:
+                continue
         filtered.append((nid, row))
 
     filtered.sort(key=lambda x: _note_time_to_epoch_seconds(x[1].get("time")) or 0, reverse=True)
@@ -167,11 +212,19 @@ def main() -> int:
         f"date_window_days: {args.since_days}",
         f"keywords_version: {kw_version}",
         "source: MediaCrawler",
-        "---",
-        "",
-        f"共 {len(filtered)} 条笔记（按 `time` 落在最近 {args.since_days} 天内；无时间字段的已排除）。",
-        "",
     ]
+    if args.group:
+        lines.append(f"keyword_group: {args.group}")
+    lines.extend(
+        [
+            "---",
+            "",
+            f"共 {len(filtered)} 条笔记（按 `time` 落在最近 {args.since_days} 天内；无时间字段的已排除"
+            + (f"；仅分组 `{args.group}`" if args.group else "")
+            + "）。",
+            "",
+        ]
+    )
 
     for nid, row in filtered:
         title = row.get("title") or "N/A"
