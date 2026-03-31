@@ -67,6 +67,46 @@ def _discover_jsonl(data_dir: Path, prefix: str) -> list[Path]:
     return sorted(data_dir.glob(f"{prefix}_*.jsonl"))
 
 
+def _pick_newer_note(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
+    """同 note_id 多条记录时保留时间更新的那条（用于去重）。"""
+    ta = _note_time_to_epoch_seconds(a.get("time")) or 0
+    tb = _note_time_to_epoch_seconds(b.get("time")) or 0
+    if tb > ta:
+        return b
+    if tb < ta:
+        return a
+    la = float(a.get("last_modify_ts") or 0)
+    lb = float(b.get("last_modify_ts") or 0)
+    return b if lb >= la else a
+
+
+def _dedupe_comments_for_note(
+    rows: list[dict[str, Any]],
+) -> list[str]:
+    """同一笔记多条评论：按 comment_id 去重，无 id 则按正文去重，保持首次出现顺序。"""
+    seen_ids: set[str] = set()
+    seen_text: set[str] = set()
+    out: list[str] = []
+    for row in rows:
+        text = (row.get("content") or "").strip()
+        if not text:
+            continue
+        cid = row.get("comment_id")
+        if cid is not None and str(cid):
+            s = str(cid)
+            if s in seen_ids:
+                continue
+            seen_ids.add(s)
+            out.append(text)
+            seen_text.add(text)
+            continue
+        if text in seen_text:
+            continue
+        seen_text.add(text)
+        out.append(text)
+    return out
+
+
 def _keywords_for_group(yaml_path: Path, group_name: str) -> set[str]:
     if yaml is None:
         raise RuntimeError("按分组过滤需要 PyYAML，请执行: pip install -r requirements-scripts.txt")
@@ -90,7 +130,17 @@ def _keywords_for_group(yaml_path: Path, group_name: str) -> set[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--since-days", type=int, default=90, help="只保留笔记发布时间在最近 N 天内")
+    parser.add_argument(
+        "--since-days",
+        type=int,
+        default=90,
+        help="只保留笔记发布时间在最近 N 天内；与 --all-dates 互斥",
+    )
+    parser.add_argument(
+        "--all-dates",
+        action="store_true",
+        help="不按时间过滤，导出 JSONL 内去重后的全部笔记（适合已停爬、只整理存量数据）",
+    )
     parser.add_argument(
         "--mc-root",
         type=Path,
@@ -137,6 +187,9 @@ def main() -> int:
         help="输出 Markdown 路径，例如 output/xhs_boox_raw_2026-03-31.md",
     )
     args = parser.parse_args()
+    if args.all_dates and args.since_days != 90:
+        print("已指定 --all-dates，将忽略 --since-days", file=sys.stderr)
+    use_date_filter = not args.all_dates
 
     group_keywords: set[str] | None = None
     if args.group:
@@ -155,24 +208,32 @@ def main() -> int:
         print(f"未找到笔记 JSONL。请确认已爬取且路径存在: {data_dir}", file=sys.stderr)
         return 1
 
+    # 笔记：同 note_id 合并为一条，取 time 较新（若无则比 last_modify_ts）
     all_notes: dict[str, dict[str, Any]] = {}
+    content_row_count = 0
     for fp in content_files:
         for row in _load_jsonl(fp):
+            content_row_count += 1
             nid = row.get("note_id")
             if not nid:
                 continue
-            # 同 note_id 保留最后一次出现
-            all_notes[str(nid)] = row
+            k = str(nid)
+            if k not in all_notes:
+                all_notes[k] = row
+            else:
+                all_notes[k] = _pick_newer_note(all_notes[k], row)
 
-    comments_by_note: dict[str, list[str]] = defaultdict(list)
+    raw_comments: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for fp in comment_files:
         for row in _load_jsonl(fp):
             nid = row.get("note_id")
             if not nid:
                 continue
-            text = row.get("content")
-            if text:
-                comments_by_note[str(nid)].append(str(text))
+            raw_comments[str(nid)].append(row)
+
+    comments_by_note: dict[str, list[str]] = {}
+    for nid, rows in raw_comments.items():
+        comments_by_note[nid] = _dedupe_comments_for_note(rows)
 
     now = datetime.now(timezone.utc).timestamp()
     cutoff = now - args.since_days * 86400
@@ -182,8 +243,9 @@ def main() -> int:
         t = _note_time_to_epoch_seconds(row.get("time"))
         if t is None:
             t = _note_time_to_epoch_seconds(row.get("last_update_time"))
-        if t is None or t < cutoff:
-            continue
+        if use_date_filter:
+            if t is None or t < cutoff:
+                continue
         if group_keywords is not None:
             sk = (row.get("source_keyword") or "").strip()
             if sk not in group_keywords:
@@ -209,22 +271,26 @@ def main() -> int:
     lines: list[str] = [
         "---",
         f"generated_at: {generated_at}",
-        f"date_window_days: {args.since_days}",
+        f"date_window_days: {args.since_days if use_date_filter else 'all'}",
         f"keywords_version: {kw_version}",
         "source: MediaCrawler",
+        "deduplicated: true",
+        f"notes_input_rows: {content_row_count}",
+        f"notes_unique: {len(all_notes)}",
     ]
     if args.group:
         lines.append(f"keyword_group: {args.group}")
-    lines.extend(
-        [
-            "---",
-            "",
-            f"共 {len(filtered)} 条笔记（按 `time` 落在最近 {args.since_days} 天内；无时间字段的已排除"
-            + (f"；仅分组 `{args.group}`" if args.group else "")
-            + "）。",
-            "",
-        ]
+    summary = (
+        f"共 {len(filtered)} 条笔记（已按 `note_id` 去重；评论已按 `comment_id`/正文去重）"
+        + (
+            f"；时间范围：最近 {args.since_days} 天"
+            if use_date_filter
+            else "；**未做时间过滤**（--all-dates）"
+        )
+        + (f"；仅分组 `{args.group}`" if args.group else "")
+        + "。"
     )
+    lines.extend(["---", "", summary, ""])
 
     for nid, row in filtered:
         title = row.get("title") or "N/A"

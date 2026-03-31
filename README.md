@@ -159,6 +159,10 @@ python scripts/export_xhs_to_md.py --since-days 90 --out output/xhs_boox_raw_$(d
 
 说明：`export_xhs_to_md.py` 默认从 `third_party/MediaCrawler/data/xhs/jsonl/` 收集所有 `search_contents_*.jsonl` / `search_comments_*.jsonl`；也可用 `--contents`、`--comments` 指定文件。
 
+- **去重**：同 `note_id` 多条记录合并为一条（保留发布时间较新的）；评论按 `comment_id` 去重，无 id 则按正文去重。  
+- **停爬后导出全部**：加 **`--all-dates`** 不做 90 天时间过滤，例如：  
+  `python scripts/export_xhs_to_md.py --all-dates --out output/xhs_boox_dedup_$(date +%Y-%m-%d).md`
+
 按系列单独出 md（与 `config/keywords_xhs_boox.yaml` 中 `groups` 键名一致）：加 `--group`，例如 `--group p6_system`、`leaf5_series`、`t10c_series`、`ai_cross`（按 `source_keyword` 与 YAML 中该组词条精确匹配过滤）。
 
 完成后：`git add` / `commit` / `push` 到 `https://github.com/Sodamax778/expert-eureka.git`。
