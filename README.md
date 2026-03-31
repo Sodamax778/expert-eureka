@@ -30,6 +30,8 @@ cd <你的仓库名>
 git submodule update --init --recursive
 ```
 
+在子模块尚未成功检出前，本机 `git status` 可能显示 `third_party/MediaCrawler` 为未同步/删除，属正常现象；待上述命令在本机网络可达 GitHub 时执行成功后，工作区会恢复为已检出的子模块目录。
+
 ## 子模块固定版本（pinned commit）
 
 当前子模块指向上游 **固定 commit**（非「始终跟踪 main」）：
