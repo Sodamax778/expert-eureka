@@ -1,0 +1,2 @@
+# 仅用于仓库根目录 scripts/（与 MediaCrawler 子模块内 uv 环境相互独立）
+PyYAML>=6.0

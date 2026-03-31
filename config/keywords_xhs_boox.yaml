@@ -1,0 +1,28 @@
+# BOOX / 文石 小红书搜索关键词（供 sync_keywords_to_medcrawler.py 写入上游 base_config.KEYWORDS）
+# MediaCrawler 要求：英文逗号分隔，本文件按分组维护，同步时按分组顺序展开并去重（保留首次出现顺序）。
+version: "1"
+
+groups:
+  p6_system:
+    - 文石 P6
+    - BOOX P6
+    - P6 系统
+    - 文石P6
+    - 文石 P6 卡顿
+    - 文石 P6 固件
+  leaf5:
+    - 文石 Leaf5
+    - Leaf5
+    - Leaf5C
+    - 文石 Leaf5C
+  t10c:
+    - 文石 Tab10C
+    - Tab10C
+    - Tab10C Pro
+    - T10C
+    - 文石 T10C
+  ai_cross:
+    - 文石 阅读器 AI
+    - BOOX AI
+    - 文石 语音
+    - 文石 OCR

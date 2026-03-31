@@ -89,15 +89,36 @@ uv run playwright install   # 或 playwright install chromium，按上游文档
 uv run main.py --platform xhs --lt qrcode --type search
 ```
 
-关键词、评论开关、排序与存储格式等请在 submodule 内的 `config/base_config.py`、`config/xhs_config.py`（或当前版本等价文件）中按 [上游文档](https://github.com/NanmiCoder/MediaCrawler/blob/main/docs/data_storage_guide.md) 调整。
+评论开关、单帖评论条数、存储格式等仍可在 submodule 内 `config/base_config.py` 中调整；默认 JSONL 路径形如 `third_party/MediaCrawler/data/xhs/jsonl/search_contents_<日期>.jsonl` 与 `search_comments_<日期>.jsonl`。详见 [上游 data_storage_guide](https://github.com/NanmiCoder/MediaCrawler/blob/main/docs/data_storage_guide.md)。
 
-## 本仓库后续脚本（规划中）
+## 本仓库脚本（关键词同步与 Markdown 导出）
 
-按计划可在此仓库根目录增加（与 submodule 并列，不复制上游全文）：
+仓库根目录（非子模块内）：
 
-- `config/keywords_xhs_boox.yaml` — 关键词清单
-- `scripts/sync_keywords_to_medcrawler.py` — 写入上游配置
-- `scripts/export_xhs_to_md.py` — 从 JSONL 等导出 Markdown
-- `output/` — Markdown 产物
+| 路径 | 作用 |
+|------|------|
+| `config/keywords_xhs_boox.yaml` | BOOX/文石相关搜索词，按分组维护 |
+| `scripts/sync_keywords_to_medcrawler.py` | 写入子模块 `config/base_config.py` 的 `KEYWORDS`，并将 `xhs_config.SORT_TYPE` 设为 `time_descending`（最新优先，可用 `--no-sort-latest` 关闭） |
+| `scripts/export_xhs_to_md.py` | 读取上述 JSONL，按笔记 `time` 过滤最近 N 天（默认 90），生成原始文本导向的 Markdown |
+| `output/` | 建议将导出 `.md` 放在此目录并纳入版本管理 |
+| `requirements-scripts.txt` | 仅脚本依赖：`PyYAML`（与 MediaCrawler 的 `uv` 环境分离） |
 
-流程就绪后：本机运行采集 → 导出 → `git add` / `commit` / `push` 到 `https://github.com/Sodamax778/expert-eureka.git`。
+### 推荐流程（本机）
+
+```bash
+# 仓库根目录
+pip install -r requirements-scripts.txt   # 或 uv pip install -r requirements-scripts.txt
+
+python scripts/sync_keywords_to_medcrawler.py
+
+cd third_party/MediaCrawler
+uv sync && uv run playwright install
+uv run main.py --platform xhs --lt qrcode --type search
+
+cd ../..
+python scripts/export_xhs_to_md.py --since-days 90 --out output/xhs_boox_raw_$(date +%Y-%m-%d).md
+```
+
+说明：`export_xhs_to_md.py` 默认从 `third_party/MediaCrawler/data/xhs/jsonl/` 收集所有 `search_contents_*.jsonl` / `search_comments_*.jsonl`；也可用 `--contents`、`--comments` 指定文件。
+
+完成后：`git add` / `commit` / `push` 到 `https://github.com/Sodamax778/expert-eureka.git`。
