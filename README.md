@@ -90,10 +90,18 @@ git commit -m "chore: bump MediaCrawler submodule"
 ```bash
 cd third_party/MediaCrawler
 uv sync
-uv run playwright install   # 或 playwright install chromium，按上游文档
+uv run playwright install   # 或 uv run playwright install chromium，按上游文档
 ```
 
-小红书关键词搜索示例（二维码登录，具体选项以当前版本为准）：
+### 终端常见问题
+
+| 现象 | 原因 | 处理 |
+|------|------|------|
+| `zsh: permission denied: .../MediaCrawler` | 把文件夹路径当成「程序」执行了 | 必须带 **`cd`**：`cd "/Users/你的用户名/.../third_party/MediaCrawler"` |
+| 只输入了 `sync` | 少了前面的 `uv` | 正确是 **`uv sync`**（在已进入 `MediaCrawler` 目录后执行） |
+| `command not found: uv` | 未安装 `uv`，或终端是安装前开的 | 安装：在终端执行 `curl -LsSf https://astral.sh/uv/install.sh \| sh`，然后**关掉终端再开**，或执行 `source ~/.zshrc`；确认 `uv` 在 `~/.local/bin` |
+
+### 小红书关键词搜索（二维码登录）
 
 ```bash
 uv run main.py --platform xhs --lt qrcode --type search
