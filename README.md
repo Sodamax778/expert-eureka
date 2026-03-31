@@ -115,6 +115,8 @@ uv run playwright install   # 或 uv run playwright install chromium，按上游
 
 **页面一闪就关**：常见原因是首页一直等 `load` 事件超时，进程报错退出后浏览器被关掉。同步脚本默认会给 `media_platform/xhs/core.py` 打补丁（`domcontentloaded` + 更长超时）；另建议加 **`--keep-browser-open`**，让任务跑完后也不自动关窗口，方便扫码。
 
+**`Locator.click: Timeout` 点登录没反应**：说明**还没进入正常爬取**，程序在自动点「登录」时失败就退出了。本仓库在子模块 `media_platform/xhs/login.py` 中增加了多种登录按钮定位方式（仍可能被小红书改版打破）。若仍失败：在浏览器里**手动点开登录并完成扫码**后，可看上游是否支持 **cookie 登录**（`LOGIN_TYPE = cookie`）绕过自动点击。
+
 ### 小红书关键词搜索（二维码登录）
 
 ```bash
