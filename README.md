@@ -1,6 +1,6 @@
 # BOOX 用户需求分析（MediaCrawler 薄封装仓库）
 
-本仓库将 [NanmiCoder/MediaCrawler](https://github.com/NanmiCoder/MediaCrawler) 以 **git submodule** 形式固定在 `third_party/MediaCrawler`，便于同步上游更新、在本机运行采集后把脚本与产出推送到你自己的 GitHub。
+本仓库将 [NanmiCoder/MediaCrawler](https://github.com/NanmiCoder/MediaCrawler) 以 **git submodule** 形式固定在 `third_party/MediaCrawler`；[codedogQBY/ReadAny](https://github.com/codedogQBY/ReadAny) 以子模块形式固定在 `third_party/ReadAny`，便于同步上游、在本机运行采集后把脚本与产出推送到你自己的 GitHub。
 
 **当前约定远端**：[Sodamax778/expert-eureka](https://github.com/Sodamax778/expert-eureka)（`https://github.com/Sodamax778/expert-eureka.git`）。若本机尚未配置 `origin`，执行：
 
@@ -66,21 +66,20 @@ bash scripts/fix_submodule_and_sync.sh
 
 当前子模块指向上游 **固定 commit**（非「始终跟踪 main」）：
 
-| 项目 | 值 |
-|------|-----|
-| 上游仓库 | `https://github.com/NanmiCoder/MediaCrawler.git` |
-| 固定 commit | `e8b18683a014a143a6bc8a59f4282e2e6c6128e9` |
-| 说明 | 对应上游 `main` 在 2026-03-24 附近的快照（`update docs`） |
+| 子模块 | 上游仓库 | 固定 commit | 说明 |
+|--------|----------|-------------|------|
+| `third_party/MediaCrawler` | `https://github.com/NanmiCoder/MediaCrawler.git` | `e8b18683a014a143a6bc8a59f4282e2e6c6128e9` | 上游 `main` 在 2026-03-24 附近的快照（`update docs`） |
+| `third_party/ReadAny` | `https://github.com/codedogQBY/ReadAny.git` | `ca422a520a0e7c71cb3160794de825ffb48ee2f0` | 添加时上游 `main` 的快照 |
 
-升级上游时（在本机网络可访问 GitHub 的前提下）：
+升级某个子模块时（在本机网络可访问 GitHub 的前提下）：
 
 ```bash
-cd third_party/MediaCrawler
+cd third_party/MediaCrawler   # 或 third_party/ReadAny
 git fetch origin
 git checkout <新的 commit 或 tag>
 cd ../..
-git add third_party/MediaCrawler
-git commit -m "chore: bump MediaCrawler submodule"
+git add third_party/MediaCrawler   # 或 third_party/ReadAny
+git commit -m "chore: bump MediaCrawler submodule"   # 或 ReadAny
 ```
 
 ## 安装与运行（在子模块目录内）

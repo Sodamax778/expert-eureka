@@ -1,3 +1,6 @@
 [submodule "third_party/MediaCrawler"]
 	path = third_party/MediaCrawler
 	url = https://github.com/NanmiCoder/MediaCrawler.git
+[submodule "third_party/ReadAny"]
+	path = third_party/ReadAny
+	url = https://github.com/codedogQBY/ReadAny.git
