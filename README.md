@@ -134,6 +134,7 @@ uv run main.py --platform xhs --lt qrcode --type search
 | `config/keywords_xhs_boox.yaml` | BOOX/文石相关搜索词，按分组维护 |
 | `scripts/sync_keywords_to_medcrawler.py` | 写入 `KEYWORDS`、`SORT_TYPE`；**建议 `--no-cdp --keep-browser-open`**；并默认给小红书 `core.py` 打首页 `goto` 补丁（可用 `--skip-xhs-goto-patch` 关闭） |
 | `scripts/export_xhs_to_md.py` | 读取上述 JSONL，按笔记 `time` 过滤最近 N 天（默认 90），生成原始文本导向的 Markdown |
+| `scripts/deepseek_analyze_xhs.py` | 调用 DeepSeek Chat Completions API，分析导出的 Markdown 并生成需求/痛点/建议 |
 | `output/` | 建议将导出 `.md` 放在此目录并纳入版本管理 |
 | `requirements-scripts.txt` | 仅脚本依赖：`PyYAML`（与 MediaCrawler 的 `uv` 环境分离） |
 | `scripts/fix_submodule_and_sync.sh` | 网络导致子模块不完整时：拉齐代码并执行关键词同步 |
@@ -164,5 +165,25 @@ python scripts/export_xhs_to_md.py --since-days 90 --out output/xhs_boox_raw_$(d
   `python scripts/export_xhs_to_md.py --all-dates --out output/xhs_boox_dedup_$(date +%Y-%m-%d).md`
 
 按系列单独出 md（与 `config/keywords_xhs_boox.yaml` 中 `groups` 键名一致）：加 `--group`，例如 `--group p6_system`、`leaf5_series`、`t10c_series`、`ai_cross`（按 `source_keyword` 与 YAML 中该组词条精确匹配过滤）。
+
+### 使用 DeepSeek 分析导出的 Markdown
+
+DeepSeek key 请只放在本机环境变量中，不要写入代码或提交到 Git：
+
+```bash
+cp .env.example .env
+# 编辑 .env，把 DEEPSEEK_API_KEY=... 改成你的 key
+set -a; source .env; set +a
+
+python scripts/deepseek_analyze_xhs.py \
+  --input output/xhs_boox_raw_$(date +%Y-%m-%d).md \
+  --out output/xhs_boox_deepseek_analysis_$(date +%Y-%m-%d).md
+```
+
+默认模型为 `deepseek-chat`。如需推理模型，可设置环境变量或命令行参数：
+
+```bash
+DEEPSEEK_MODEL=deepseek-reasoner python scripts/deepseek_analyze_xhs.py --input <导出.md> --out <分析.md>
+```
 
 完成后：`git add` / `commit` / `push` 到 `https://github.com/Sodamax778/expert-eureka.git`。
