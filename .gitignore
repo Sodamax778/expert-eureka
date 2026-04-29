@@ -1,1 +1,4 @@
 .DS_Store
+
+# Local-only AI playground (generate or keep on disk; do not commit)
+readany-ai-playground.html
