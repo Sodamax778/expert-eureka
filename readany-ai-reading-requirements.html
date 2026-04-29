@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI 阅读功能 — 产品需求说明（PRD）</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --card: #fff;
+      --border: #e5e7eb;
+      --text: #111827;
+      --muted: #6b7280;
+      --accent: #1d4ed8;
+      --accent-soft: #eff6ff;
+      --warn: #b45309;
+      --warn-bg: #fffbeb;
+      font-family: "Segoe UI", system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.6;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--text); background: var(--bg); }
+    .doc {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+    h1 { font-size: 1.75rem; font-weight: 700; margin: 0 0 0.35rem; letter-spacing: -0.02em; }
+    .meta { color: var(--muted); font-size: 0.875rem; margin-bottom: 2rem; }
+    h2 {
+      font-size: 1.2rem;
+      margin: 2.25rem 0 0.75rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid var(--border);
+    }
+    h3 { font-size: 1.05rem; margin: 1.35rem 0 0.5rem; }
+    h4 { font-size: 0.95rem; margin: 1rem 0 0.4rem; color: #374151; }
+    p, li { font-size: 0.9375rem; }
+    ul, ol { padding-left: 1.35rem; margin: 0.5rem 0 1rem; }
+    li { margin: 0.35rem 0; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+    }
+    .note {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+    .warn {
+      background: var(--warn-bg);
+      border-left: 4px solid var(--warn);
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      margin: 0.75rem 0 1.25rem;
+    }
+    th, td { border: 1px solid var(--border); padding: 0.55rem 0.65rem; text-align: left; vertical-align: top; }
+    th { background: #f3f4f6; font-weight: 600; }
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.84em;
+      background: #f3f4f6;
+      padding: 0.12em 0.35em;
+      border-radius: 4px;
+    }
+    .toc { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 2rem; }
+    .toc ul { list-style: none; padding-left: 0; }
+    .toc li { margin: 0.4rem 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+    footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.8125rem; }
+  </style>
+</head>
+<body>
+  <article class="doc">
+    <h1>AI 阅读功能 — 产品需求说明</h1>
+    <p class="meta">
+      文档性质：产品 / 功能需求梳理 · 依据 ReadAny 开源项目能力归纳<br />
+      适用读者：产品、设计、研发联调 · 不绑定具体接口字段实现细节
+    </p>
+
+    <nav class="toc" aria-label="目录">
+      <strong>目录</strong>
+      <ul>
+        <li><a href="#sec-1">1. 背景与目标</a></li>
+        <li><a href="#sec-2">2. 用户与核心场景</a></li>
+        <li><a href="#sec-3">3. 功能需求</a></li>
+        <li><a href="#sec-4">4. 关键用户流程</a></li>
+        <li><a href="#sec-5">5. 非功能需求</a></li>
+        <li><a href="#sec-6">6. 边界、风险与验收要点</a></li>
+      </ul>
+    </nav>
+
+    <section id="sec-1">
+      <h2>1. 背景与目标</h2>
+      <p>
+        传统阅读器以「关键词搜索 + 本地批注」为主，难以回答「按意思找段落」「跨章节归纳」「针对划线追问」等需求。
+        <strong>AI 阅读</strong>在用户<strong>自带书库与阅读位置上下文</strong>的前提下，提供可溯源的对话、语义检索与结构化阅读辅助，并尽量保护隐私与阅读节奏（可选防剧透）。
+      </p>
+      <div class="card">
+        <h4>产品目标（可衡量方向）</h4>
+        <ul>
+          <li><strong>理解</strong>：用户能用自然语言提问，答案应优先基于当前书/当前上下文，而非泛泛闲聊。</li>
+          <li><strong>可信</strong>：涉及书内事实时，应能关联到可点击跳转的书内位置（引用 / 定位）。</li>
+          <li><strong>可控</strong>：用户可选择模型与密钥、是否向量化建库、是否开启防剧透；敏感内容尽量本地化处理。</li>
+          <li><strong>效率</strong>：划词、附文提问、多轮对话成本低；长书检索有合理耗时与结果条数上限。</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="sec-2">
+      <h2>2. 用户与核心场景</h2>
+      <table>
+        <thead>
+          <tr><th>角色</th><th>典型场景</th><th>期望结果</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>深度读者</td>
+            <td>读到某段不理解，划词后问「这段话在全书里和什么观点呼应？」</td>
+            <td>结合选文 + RAG/工具取书内材料，回答并给可跳转引用</td>
+          </tr>
+          <tr>
+            <td>研究者</td>
+            <td>需要按主题在全书找论述，并对比两章论点</td>
+            <td>语义/混合检索 + 章节级分析工具 + 引用注册</td>
+          </tr>
+          <tr>
+            <td>休闲读者</td>
+            <td>不想被剧透结局，但想讨论已读部分</td>
+            <td>防剧透模式下限制对「未读之后」内容的检索与回答</td>
+          </tr>
+          <tr>
+            <td>技能型用户</td>
+            <td>一键做摘要、概念卡、论证拆解、阅读导引</td>
+            <td>内置或可配置「技能」提示词 + 参数，输出格式稳定</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="sec-3">
+      <h2>3. 功能需求</h2>
+
+      <h3>3.1 阅读上下文（Reading Context）</h3>
+      <ul>
+        <li><strong>FR-RC-01</strong>：系统应维护当前打开书籍标识、书名、当前章节标题与索引、阅读进度（百分比/位置）、当前页可见正文摘要（周围文本）。</li>
+        <li><strong>FR-RC-02</strong>：用户<strong>划选文本</strong>时，应记录选中文本、书内定位（如 CFI）、章节索引；用于气泡操作与后续 AI 工具 <code>getSelection</code> 拉取。</li>
+        <li><strong>FR-RC-03</strong>（可选增强）：将「语义阅读上下文（章、活动类型、周围文本、最近高亮）」注入系统提示，便于模型在不增加工具往返时理解场景。</li>
+        <li><strong>FR-RC-04</strong>：选区取消或离开阅读器时的行为需明确（清空服务层选区或保留至下次覆盖），避免工具读到陈旧选区。</li>
+      </ul>
+
+      <h3>3.2 对话与多轮（Chat）</h3>
+      <ul>
+        <li><strong>FR-CH-01</strong>：支持在当前书范围内建立会话线程；历史消息需做窗口截断（滑窗大小可配置）以控制成本与上下文长度。</li>
+        <li><strong>FR-CH-02</strong>：支持用户消息中<strong>附带引用块</strong>（划词「问 AI」进入输入框）：将摘录以引用形式与用户问题拼接，模型优先围绕摘录作答。</li>
+        <li><strong>FR-CH-03</strong>：支持流式输出 token、可选「推理/思考」内容单独展示（依赖具体模型能力）。</li>
+        <li><strong>FR-CH-04</strong>：支持中止生成。</li>
+        <li><strong>FR-CH-05</strong>：助手消息应能保存工具调用轨迹、引用列表，便于导出或二次展示。</li>
+      </ul>
+
+      <h3>3.3 系统提示与行为规范</h3>
+      <ul>
+        <li><strong>FR-SP-01</strong>：系统提示应明确角色：<strong>不得用训练数据冒充本书内容</strong>；书内相关问题须先通过工具/RAG 获取材料再作答。</li>
+        <li><strong>FR-SP-02</strong>：系统提示应列出<strong>可用工具类别</strong>（书库、阅读上下文、RAG、分析、批注、引用注册、技能查询等），并规定工具调用纪律（避免同义重复检索、结果足够即停等）。</li>
+        <li><strong>FR-SP-03</strong>：响应语言策略需统一（例如与用户一致或固定中文/英文），并与 UI 多语言策略一致。</li>
+        <li><strong>FR-SP-04</strong>：允许在Markdown 中嵌入 Mermaid 图表；思维导图类需求可走专用工具而非 Mermaid。</li>
+      </ul>
+
+      <h3>3.4 RAG 与全书检索</h3>
+      <ul>
+        <li><strong>FR-RG-01</strong>：对已完成向量化/分块的书籍，提供<strong>混合检索</strong>（语义 + 关键词/BM25），返回结果须含<strong>可定位字段</strong>（如 CFI）与片段正文。</li>
+        <li><strong>FR-RG-02</strong>：提供目录/章节结构查询能力，便于模型先做结构规划再做分章检索或摘要。</li>
+        <li><strong>FR-RG-03</strong>：支持按章节范围拉取邻近正文，用于精读某一位置。</li>
+        <li><strong>FR-RG-04</strong>：对检索结果总长度设 token/字符上限，避免单次工具返回撑爆上下文。</li>
+        <li><strong>FR-RG-05</strong>：未向量化的书：应明确降级策略——仅依赖当前页/选区/用户粘贴，或提示用户先建索引。</li>
+      </ul>
+
+      <h3>3.5 工具化能力（Agent）</h3>
+      <p>模型以 ReAct 风格多轮调用工具。需求上按域拆分（与实现命名可不同）：</p>
+      <table>
+        <thead>
+          <tr><th>域</th><th>能力说明</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>书库与笔记</td><td>列出书籍、跨书搜索高亮/笔记、阅读统计等</td></tr>
+          <tr><td>阅读上下文</td><td>当前章、进度、选区、最近高亮、当前页可见文本</td></tr>
+          <tr><td>RAG</td><td>全书检索、目录、按章上下文</td></tr>
+          <tr><td>内容分析</td><td>摘要、实体抽取、论证分析、金句、章节对比等（通常依赖已切块数据）</td></tr>
+          <tr><td>批注</td><td>读取用户高亮/笔记类型数据</td></tr>
+          <tr><td>可视化</td><td>思维导图等结构化输出</td></tr>
+          <tr><td>技能</td><td>查询可用技能列表；按技能 ID 执行时返回技能长提示 + 参数供模型遵循</td></tr>
+        </tbody>
+      </table>
+
+      <h3>3.6 引用与书内溯源（Citation）</h3>
+      <ul>
+        <li><strong>FR-CT-01</strong>：模型在陈述书内事实、引用、情节、数据时，应通过<strong>注册引用</strong>与正文中的 <code>[1]</code>、<code>[2]</code> 等形式对应。</li>
+        <li><strong>FR-CT-02</strong>：每条引用须绑定可跳转定位（CFI 等）与简短摘录（长度上限如 200 字以内，可配置）。</li>
+        <li><strong>FR-CT-03</strong>：UI 须支持用户点击引用标记跳转阅读位置。</li>
+        <li><strong>FR-CT-04</strong>：在历史消息回放时，引用信息可注入到消息文本末尾（便于多轮连贯），具体格式需与导出一致。</li>
+      </ul>
+
+      <h3>3.7 技能（Skills）</h3>
+      <ul>
+        <li><strong>FR-SK-01</strong>：内置多类技能（如摘要、概念解释、论证分析、人物、金句、阅读向导、翻译、词汇等），每类含<strong>结构化提示词</strong>（步骤、版式、约束、示例）。</li>
+        <li><strong>FR-SK-02</strong>：用户可开关内置技能；可新增自定义技能（名称、描述、参数模式、提示词）。</li>
+        <li><strong>FR-SK-03</strong>：主对话路径中，技能可作为工具暴露；亦可提供<strong>直达执行</strong>路径（仅系统提示 + 技能提示 + 参数起一次模型调用）。</li>
+      </ul>
+
+      <h3>3.8 防剧透模式</h3>
+      <ul>
+        <li><strong>FR-SF-01</strong>：用户可开启「防剧透」：系统提示约束模型不得透露当前阅读位置之后的叙事信息。</li>
+        <li><strong>FR-SF-02</strong>：应禁止或限制会拉取「未读章节」内容的工具调用；用户坚持追问时应礼貌拒绝并引导继续阅读。</li>
+        <li><strong>FR-SF-03</strong>：防剧透判定依赖可靠的「当前章/进度」信息；若该信息缺失，应降级提示或保守处理。</li>
+      </ul>
+
+      <h3>3.9 模型与连接</h3>
+      <ul>
+        <li><strong>FR-MD-01</strong>：支持多供应商、多 Endpoint、可配置 API Key、Base URL、模型列表。</li>
+        <li><strong>FR-MD-02</strong>：支持本地推理（如 Ollama）与云端 API；流式与非流式兼容策略明确。</li>
+        <li><strong>FR-MD-03</strong>：对需多轮工具调用的「推理模型」保留历史中的推理字段，避免会话报错。</li>
+        <li><strong>FR-MD-04</strong>：嵌入/向量化模型可与聊天模型分离配置（本地 HF 管线等）。</li>
+      </ul>
+    </section>
+
+    <section id="sec-4">
+      <h2>4. 关键用户流程</h2>
+
+      <h3>4.1 划词问 AI</h3>
+      <ol>
+        <li>用户在阅读器划选文本 → 系统记录选区与定位。</li>
+        <li>用户点击「问 AI」→ 打开侧边对话（或唤起输入）并附带摘录 Chip。</li>
+        <li>用户输入问题（可仅发送摘录）→ 将「关于以下文本… + 引用块 + 问题」送入对话。</li>
+        <li>模型按需调用工具（如 <code>getSelection</code>、<code>ragSearch</code>）并流式输出。</li>
+        <li>涉及书内事实时注册引用，用户点击 <code>[n]</code> 跳转。</li>
+      </ol>
+
+      <h3>4.2 全书主题检索问答</h3>
+      <ol>
+        <li>书籍已完成向量化。</li>
+        <li>用户在对话中提出主题问题 → 模型调用 RAG 检索 → 必要时多工具组合（目录 / 分章摘要）。</li>
+        <li>回答中注册引用，避免重复无效检索。</li>
+      </ol>
+
+      <h3>4.3 使用技能</h3>
+      <ol>
+        <li>用户在设置中启用技能（内置/自定义）。</li>
+        <li>对话中模型通过「查询技能」工具匹配任务 → 调用对应技能工具获取长提示 → 按提示生成。</li>
+        <li>或使用直达执行：选择技能 → 填参 → 单次模型调用产出结构化结果。</li>
+      </ol>
+    </section>
+
+    <section id="sec-5">
+      <h2>5. 非功能需求</h2>
+      <ul>
+        <li><strong>NFR-01 隐私</strong>：书稿与向量索引默认落在用户设备或可信任存储；密钥不落日志明文。</li>
+        <li><strong>NFR-02 性能</strong>：流式首字时间、单次 RAG 延迟、工具链路过长时的超时与取消。</li>
+        <li><strong>NFR-03 可访问</strong>：聊天与阅读器联动时焦点管理、键盘操作。</li>
+        <li><strong>NFR-04 合规</strong>：爬虫/版权内容提示由产品声明；AI 输出免责声明可按需要展示。</li>
+        <li><strong>NFR-05 离线</strong>：本地模型与本地向量库场景下核心阅读 + 本地 RAG 可用性定义。</li>
+      </ul>
+    </section>
+
+    <section id="sec-6">
+      <h2>6. 边界、风险与验收要点</h2>
+      <div class="warn">
+        <strong>幻觉与漏检</strong>：RAG 分块与检索 Top-K 会导致漏答或断章取义；需在文案与设置中管理预期，并提供「再次检索不同关键词」等引导而非静默重试滥用。
+      </div>
+      <div class="note">
+        <strong>验收抽查建议</strong>
+        <ul>
+          <li>无索引书：仅附文提问仍能回答摘录相关；不出现伪造章节名。</li>
+          <li>有索引书：事实句带可跳转引用；引用 CFI 有效。</li>
+          <li>防剧透开：追问结局应拒绝且不调用后续章节工具。</li>
+          <li>划词清除后：「问 AI」未附文时，<code>getSelection</code> 行为符合定义（空/错误提示）。</li>
+          <li>长会话：滑窗后仍能完成简单跟进问题（或明确遗忘边界）。</li>
+        </ul>
+      </div>
+      <p>
+        <strong>实现映射说明</strong>：上述需求与开源项目 ReadAny 中「阅读上下文服务、LangGraph 阅读 Agent、RAG 工具链、系统提示拼装、内置技能库」等模块一一对应，具体类名与文件路径以实现仓库为准；本文档用于产品与研发对齐范围与行为，不替代接口文档。
+      </p>
+    </section>
+
+    <footer>
+      文档版本：1.0 · 内容基于 ReadAny 类产品的 AI 阅读能力归纳 · 可自行增删验收标准与优先级（P0/P1）
+    </footer>
+  </article>
+</body>
+</html>
