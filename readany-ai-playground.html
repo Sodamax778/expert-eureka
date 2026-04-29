@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ReadAny AI 能力试玩（本地密钥）</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --border: #2d3a4d;
+      --text: #e6edf3;
+      --muted: #8b9cb3;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --danger: #f87171;
+      --ok: #4ade80;
+      font-family: "Segoe UI", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 1.25rem 1rem 3rem;
+    }
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 0 0 0.25rem;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 0.875rem;
+      margin-bottom: 1.25rem;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.1rem;
+      margin-bottom: 1rem;
+    }
+    label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+    input[type="text"],
+    input[type="password"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.9rem;
+    }
+    textarea { min-height: 120px; resize: vertical; font-family: ui-monospace, monospace; font-size: 0.82rem; }
+    textarea.system { min-height: 280px; }
+    .row {
+      display: grid;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    @media (min-width: 640px) {
+      .row.cols-2 { grid-template-columns: 1fr 1fr; }
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    button {
+      padding: 0.55rem 1rem;
+      border-radius: 6px;
+      border: none;
+      font-size: 0.9rem;
+      cursor: pointer;
+      background: var(--accent);
+      color: #fff;
+    }
+    button:hover { background: var(--accent-hover); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .out {
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.88rem;
+      max-height: 420px;
+      overflow: auto;
+      padding: 0.75rem;
+      background: var(--bg);
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+    .status { font-size: 0.8rem; margin-top: 0.5rem; color: var(--muted); }
+    .status.err { color: var(--danger); }
+    .status.ok { color: var(--ok); }
+    .hint {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+      padding: 0.6rem;
+      background: rgba(59, 130, 246, 0.08);
+      border-radius: 6px;
+      border-left: 3px solid var(--accent);
+    }
+    code { font-size: 0.85em; background: var(--bg); padding: 0.1em 0.35em; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>ReadAny AI 能力试玩</h1>
+    <p class="sub">
+      独立页面：在本地填写密钥与地址，请求 <strong>OpenAI 兼容</strong>的
+      <code>/chat/completions</code>（与 ReadAny 所用接口形态一致）。系统提示词可编辑，默认贴近 ReadAny 主系统角色与约束。
+    </p>
+
+    <div class="hint">
+      <strong>关于浏览器与 CORS：</strong> 从本地打开本 HTML 直接请求
+      <code>api.openai.com</code> 等多数云厂商常被浏览器跨域策略拦截。可任选：
+      （1）<strong>Ollama</strong> 预设 + 本机已运行 <code>ollama serve</code>；
+      （2）自建或内网反代，把 API 与页面同源；
+      （3）用某允许 CORS 的兼容网关（自行部署，勿把密钥交给不明公共代理）。
+    </div>
+
+    <div class="card">
+      <div class="row cols-2">
+        <div>
+          <label for="preset">预设</label>
+          <select id="preset">
+            <option value="custom">自定义 Base URL</option>
+            <option value="openai">OpenAI (https://api.openai.com/v1)</option>
+            <option value="ollama">Ollama (http://127.0.0.1:11434/v1)</option>
+            <option value="deepseek">DeepSeek (https://api.deepseek.com/v1)</option>
+            <option value="siliconflow">SiliconFlow (https://api.siliconflow.cn/v1)</option>
+          </select>
+        </div>
+        <div>
+          <label for="baseUrl">Base URL（须含 /v1，无尾部斜杠）</label>
+          <input id="baseUrl" type="text" spellcheck="false" placeholder="https://api.openai.com/v1" />
+        </div>
+      </div>
+      <div class="row cols-2">
+        <div>
+          <label for="apiKey">API Key（仅保存在本页内存；可配合本地存储「记住」）</label>
+          <input id="apiKey" type="password" autocomplete="off" placeholder="sk-... 或留空（如 Ollama）" />
+        </div>
+        <div>
+          <label for="model">模型 ID</label>
+          <input id="model" type="text" spellcheck="false" placeholder="gpt-4o-mini / deepseek-chat / qwen2.5" />
+        </div>
+      </div>
+      <div class="row">
+        <label>
+          <input type="checkbox" id="stream" checked />
+          流式输出（SSE）
+        </label>
+      </div>
+      <div class="actions">
+        <button type="button" id="btnSend">发送请求</button>
+        <button type="button" id="btnStop" class="secondary" disabled>停止</button>
+        <button type="button" id="btnSaveKey" class="secondary">将密钥存浏览器 localStorage</button>
+        <button type="button" id="btnClearKey" class="secondary">清除已存密钥</button>
+      </div>
+      <p id="status" class="status"></p>
+    </div>
+
+    <div class="card">
+      <label for="systemPrompt">系统提示词（可改；默认摘自 ReadAny 角色 + 简要约束）</label>
+      <textarea id="systemPrompt" class="system" spellcheck="false"></textarea>
+    </div>
+
+    <div class="card">
+      <label for="userMsg">用户消息</label>
+      <textarea id="userMsg" spellcheck="false" placeholder="例如：用一句话概括《某某》第一章在讲什么。（若接口无法访问书库/RAG，模型只能按常识或你上文提供的摘录回答。）"></textarea>
+    </div>
+
+    <div class="card">
+      <label>助手回复</label>
+      <div id="output" class="out"></div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const DEFAULT_SYSTEM = `You are ReadAny AI, an intelligent reading assistant. You help users understand, analyze, and engage with the books they are reading.
+
+**CRITICAL: You do NOT have access to the book's content in your training data unless the user pasted it in the conversation. You MUST NOT fabricate quotes or chapter content. If you cannot know the book, say so honestly.**
+
+**Response:** Use clear Markdown. Be concise unless the user asks for depth. Respond in the same language as the user's message when possible.`;
+
+      const presetMap = {
+        openai: { url: "https://api.openai.com/v1", model: "gpt-4o-mini" },
+        ollama: { url: "http://127.0.0.1:11434/v1", model: "llama3.2" },
+        deepseek: { url: "https://api.deepseek.com/v1", model: "deepseek-chat" },
+        siliconflow: { url: "https://api.siliconflow.cn/v1", model: "Qwen/Qwen2.5-7B-Instruct" },
+        custom: { url: "", model: "" },
+      };
+
+      const el = {
+        preset: document.getElementById("preset"),
+        baseUrl: document.getElementById("baseUrl"),
+        apiKey: document.getElementById("apiKey"),
+        model: document.getElementById("model"),
+        stream: document.getElementById("stream"),
+        systemPrompt: document.getElementById("systemPrompt"),
+        userMsg: document.getElementById("userMsg"),
+        output: document.getElementById("output"),
+        status: document.getElementById("status"),
+        btnSend: document.getElementById("btnSend"),
+        btnStop: document.getElementById("btnStop"),
+        btnSaveKey: document.getElementById("btnSaveKey"),
+        btnClearKey: document.getElementById("btnClearKey"),
+      };
+
+      el.systemPrompt.value = DEFAULT_SYSTEM;
+
+      const STORAGE_KEY_BASE = "readany-ai-playground";
+      const STORAGE_URL = STORAGE_KEY_BASE + "-base";
+      const STORAGE_KEY = STORAGE_KEY_BASE + "-key";
+      const STORAGE_MODEL = STORAGE_KEY_BASE + "-model";
+
+      function loadStorage() {
+        const u = localStorage.getItem(STORAGE_URL);
+        const k = localStorage.getItem(STORAGE_KEY);
+        const m = localStorage.getItem(STORAGE_MODEL);
+        if (u) el.baseUrl.value = u;
+        if (k) el.apiKey.value = k;
+        if (m) el.model.value = m;
+      }
+
+      function applyPreset() {
+        const p = el.preset.value;
+        if (p === "custom") return;
+        const cfg = presetMap[p];
+        if (cfg.url) el.baseUrl.value = cfg.url;
+        if (cfg.model && !el.model.value.trim()) el.model.value = cfg.model;
+      }
+
+      el.preset.addEventListener("change", applyPreset);
+      loadStorage();
+      applyPreset();
+
+      let abortCtrl = null;
+
+      function setStatus(text, cls) {
+        el.status.textContent = text || "";
+        el.status.className = "status" + (cls ? " " + cls : "");
+      }
+
+      el.btnSaveKey.addEventListener("click", function () {
+        localStorage.setItem(STORAGE_URL, el.baseUrl.value.trim());
+        localStorage.setItem(STORAGE_KEY, el.apiKey.value);
+        localStorage.setItem(STORAGE_MODEL, el.model.value.trim());
+        setStatus("已保存 Base URL / Key / Model 到 localStorage。", "ok");
+      });
+
+      el.btnClearKey.addEventListener("click", function () {
+        localStorage.removeItem(STORAGE_URL);
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(STORAGE_MODEL);
+        el.apiKey.value = "";
+        setStatus("已清除本地存储的密钥相关项。", "ok");
+      });
+
+      el.btnStop.addEventListener("click", function () {
+        if (abortCtrl) abortCtrl.abort();
+      });
+
+      async function readSseStream(response, onDelta) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const parts = buf.split("\n\n");
+          buf = parts.pop() || "";
+          for (const chunk of parts) {
+            const line = chunk.trim();
+            if (!line.startsWith("data: ")) continue;
+            const data = line.slice(6);
+            if (data === "[DONE]") return;
+            try {
+              const json = JSON.parse(data);
+              const choice = json.choices && json.choices[0];
+              if (!choice) continue;
+              const delta = choice.delta && choice.delta.content;
+              if (typeof delta === "string" && delta) onDelta(delta);
+              const msg = choice.message && choice.message.content;
+              if (typeof msg === "string" && msg) onDelta(msg);
+            } catch (_) {
+              /* ignore bad json lines */
+            }
+          }
+        }
+      }
+
+      el.btnSend.addEventListener("click", async function () {
+        const base = el.baseUrl.value.trim().replace(/\/$/, "");
+        const key = el.apiKey.value.trim();
+        const model = el.model.value.trim();
+        const sys = el.systemPrompt.value;
+        const user = el.userMsg.value.trim();
+
+        if (!base) {
+          setStatus("请填写 Base URL。", "err");
+          return;
+        }
+        if (!model) {
+          setStatus("请填写模型 ID。", "err");
+          return;
+        }
+        if (!user) {
+          setStatus("请填写用户消息。", "err");
+          return;
+        }
+
+        const url = base + "/chat/completions";
+        const headers = { "Content-Type": "application/json" };
+        if (key) headers["Authorization"] = "Bearer " + key;
+
+        const body = {
+          model,
+          messages: [
+            { role: "system", content: sys },
+            { role: "user", content: user },
+          ],
+        };
+
+        el.output.textContent = "";
+        setStatus("请求中…");
+        el.btnSend.disabled = true;
+        el.btnStop.disabled = false;
+        abortCtrl = new AbortController();
+
+        try {
+          if (el.stream.checked) {
+            body.stream = true;
+            const res = await fetch(url, {
+              method: "POST",
+              headers,
+              body: JSON.stringify(body),
+              signal: abortCtrl.signal,
+            });
+            if (!res.ok) {
+              const t = await res.text();
+              throw new Error(res.status + " " + res.statusText + (t ? "\n" + t : ""));
+            }
+            await readSseStream(res, function (text) {
+              el.output.textContent += text;
+            });
+            setStatus("流式结束。", "ok");
+          } else {
+            const res = await fetch(url, {
+              method: "POST",
+              headers,
+              body: JSON.stringify(body),
+              signal: abortCtrl.signal,
+            });
+            const textBody = await res.text();
+            if (!res.ok) {
+              throw new Error(res.status + " " + res.statusText + (textBody ? "\n" + textBody : ""));
+            }
+            const json = JSON.parse(textBody);
+            const content = json.choices && json.choices[0] && json.choices[0].message && json.choices[0].message.content;
+            el.output.textContent = typeof content === "string" ? content : JSON.stringify(json, null, 2);
+            setStatus("完成。", "ok");
+          }
+        } catch (e) {
+          if (e.name === "AbortError") {
+            setStatus("已中止。", "ok");
+          } else {
+            setStatus(String(e.message || e), "err");
+          }
+        } finally {
+          el.btnSend.disabled = false;
+          el.btnStop.disabled = true;
+          abortCtrl = null;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
