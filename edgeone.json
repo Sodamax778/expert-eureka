@@ -1,0 +1,18 @@
+{
+  "name": "shubing-wallpaper-lab",
+  "buildCommand": "pnpm build",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "outputDirectory": ".next",
+  "nodeVersion": "22.11.0",
+  "cloudFunctions": {
+    "nodejs": {
+      "externalNodeModules": [
+        "subset-font"
+      ],
+      "includeFiles": [
+        "public/assets/**"
+      ],
+      "maxDuration": 60
+    }
+  }
+}

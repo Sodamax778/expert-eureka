@@ -1,71 +1,90 @@
-# 小文 AI
+# 薯饼壁纸实验室
 
-这是小文 AI 后续开发与资料整理的私有代码库底座。
+薯饼壁纸实验室把微信读书的阅读记录填入固定 SVG 模板，生成适配文石 Leaf 系列的 JPG 壁纸。当前版本不调用 AI 生图，核心是“数据归一化 + 模板占位渲染”。
 
-当前仓库已从早期 BOOX/MediaCrawler 薄封装形态清理为自有项目结构：不再绑定第三方 git submodule，不再把采集工具代码直接纳入仓库；只保留可复用的关键词配置、数据整理脚本和输出目录约定。
+## 当前能力
 
-## 目录结构
+- 微信读书 Skill Key 真实调用，Key 只保存在用户自己的浏览器。
+- 2 个首发场景：每周购物小票、本月阅读记录。
+- 文石 Leaf 系列竖版尺寸、模板选项和自动预览。
+- 系统字体与用户字体导入；用户字体保存在浏览器 IndexedDB，生成时临时子集化并嵌入 SVG。
+- 浏览器转换并下载 JPG。
+
+## 公开版数据原则
+
+- 服务端不保存 Skill Key、阅读数据、用户字体或生成图片。
+- Skill Key 使用 `localStorage` 保存，用户字体使用 `IndexedDB` 保存。
+- 调用真实数据时，浏览器通过 HTTPS 临时提交 Key；接口转发到微信读书后立即释放。
+- API 响应统一使用 `Cache-Control: no-store`，Key 不放入 URL、不写入应用日志。
+- 项目不需要数据库、对象存储或服务端加密密钥。
+
+## 技术栈
+
+- Next.js 16 App Router
+- React 19
+- TypeScript 6
+- 服务端 SVG 模板渲染
+- 浏览器 JPG 转换
+- `subset-font` 临时字体子集化
+
+## 本地启动
+
+需要 Node.js 20+ 和 pnpm。
+
+```bash
+pnpm install --frozen-lockfile
+pnpm dev
+```
+
+访问 `http://localhost:3000`。公开部署必须使用 HTTPS。
+
+## EdgeOne Makers 部署
+
+项目已包含 `edgeone.json`。把代码推送到 GitHub 后，在 EdgeOne Makers 导入仓库即可，无需服务器、数据库或环境变量。
+
+部署时使用：
 
 ```text
-config/
-  keywords_xhs_boox.yaml      # 小红书/BOOX 需求调研关键词，可继续扩展或替换
-scripts/
-  export_xhs_to_md.py         # 将采集得到的 JSONL 整理为 Markdown
-output/
-  .gitkeep                    # Markdown/报告输出目录占位
-data/raw/xhs/jsonl/
-  .gitkeep                    # 本地原始 JSONL 默认放置目录
-requirements-scripts.txt      # 仓库脚本依赖
+框架：Next.js
+Node.js：22.11.0
+安装命令：pnpm install --frozen-lockfile
+构建命令：pnpm build
+输出目录：.next
+生产分支：main
 ```
 
-## 本地准备
+详细步骤见 [GitHub + EdgeOne 部署说明](docs/public-deployment.md)。
+
+## 检查与构建
 
 ```bash
-python -m venv .venv
-. .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
-pip install -r requirements-scripts.txt
+pnpm typecheck
+pnpm build
+pnpm start
 ```
 
-## 导出小红书 JSONL 为 Markdown
+`pnpm build` 使用 Webpack，因为 `subset-font` 服务端依赖按该模式完成验证。
 
-默认读取 `data/raw/xhs/jsonl/` 下的：
+## 核心目录
 
-- `search_contents_*.jsonl`
-- `search_comments_*.jsonl`
-
-示例：
-
-```bash
-python scripts/export_xhs_to_md.py --since-days 90 --out output/xhs_boox_raw.md
+```text
+app/                         页面与无状态服务端 API
+components/                  首页、连接面板、字体列表、场景工作台
+lib/browser-storage.ts       浏览器 Key 与 IndexedDB 字体存储
+lib/request-security.ts      同源校验、临时鉴权、限流和 no-store 响应
+lib/weread.ts                微信读书 Skill 调用与数据归一化
+lib/mock-boox.ts             文石模拟数据，后续由真实适配器替换
+lib/wallpaper.ts             模板选择、SVG 渲染和字体注入总入口
+lib/custom-fonts.ts          临时字体校验与 WOFF2 子集化
+docs/public-deployment.md    公开部署说明
 ```
 
-导出全部存量数据：
+`.env*`、`.data/`、`node_modules/` 和 `.next/` 不进入 Git。旧版开发机上的 `.data/` 不会被新代码读取，可在确认不再需要后自行清理。
 
-```bash
-python scripts/export_xhs_to_md.py --all-dates --out output/xhs_boox_all.md
-```
+## 先读文档
 
-按关键词分组导出：
-
-```bash
-python scripts/export_xhs_to_md.py --group p6_system --out output/xhs_boox_p6.md
-```
-
-也可以显式指定数据目录：
-
-```bash
-python scripts/export_xhs_to_md.py --data-dir /path/to/jsonl --out output/xhs_boox_raw.md
-```
-
-## 数据与隐私约定
-
-- 仓库应保持 private，仅自己可见。
-- 原始采集数据默认不提交，放在 `data/raw/` 本地处理。
-- `output/` 可存放需要版本管理的整理结果；若包含个人信息、账号信息或未脱敏评论，应先确认可提交。
-- 不提交 `.env`、令牌、cookie、浏览器会话、数据库文件和缓存目录。
-
-## 后续开发建议
-
-- 将小文 AI 的核心代码放入 `src/` 或应用框架推荐目录。
-- 将一次性脚本放入 `scripts/`，稳定模块再沉淀为包内代码。
-- 新增外部服务前，优先通过 `.env.example` 记录变量名，不提交真实密钥。
+1. [GitHub + EdgeOne 部署说明](docs/public-deployment.md)
+2. [产品设计文档](docs/product-design.md)
+3. [研发接手说明](docs/developer-handoff.md)
+4. [每日自动更新屏保 PRD](docs/auto-refresh-wallpaper-prd.md)
+5. [设计图片清单与交付要求](docs/design-asset-checklist.md)

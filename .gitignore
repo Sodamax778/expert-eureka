@@ -29,5 +29,14 @@ data/raw/**
 *.log
 
 node_modules/
+.next/
+*.tsbuildinfo
+.data/
+.env.local
+.env
+.env.*
+!.env.example
 dist/
 build/
+output/
+outputs/
