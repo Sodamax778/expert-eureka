@@ -33,6 +33,14 @@ type GenerateResponse = {
 
 type DeviceFrameTone = "black" | "white";
 
+type WeeklyPeriodOption = {
+  value: string;
+  label: string;
+  disabled: boolean;
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 const calendarMonths2026 = Array.from({ length: 12 }, (_, index) => ({
   value: `2026-${String(index + 1).padStart(2, "0")}`,
   label: `2026 年 ${index + 1} 月`
@@ -43,6 +51,55 @@ function defaultCalendarMonth() {
   return current.getFullYear() === 2026
     ? `2026-${String(current.getMonth() + 1).padStart(2, "0")}`
     : "2026-01";
+}
+
+function chinaDateParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(date);
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((part) => part.type === type)?.value || 0);
+  return { year: value("year"), month: value("month"), day: value("day") };
+}
+
+function dateKey(timestamp: number) {
+  const date = new Date(timestamp);
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+}
+
+function currentMonthWeeklyPeriods(): WeeklyPeriodOption[] {
+  const today = chinaDateParts();
+  const todayTimestamp = Date.UTC(today.year, today.month - 1, today.day);
+  const todayWeekday = new Date(todayTimestamp).getUTCDay() || 7;
+  const currentWeekStart = todayTimestamp - (todayWeekday - 1) * DAY_MS;
+  const monthStart = Date.UTC(today.year, today.month - 1, 1);
+  const monthEnd = Date.UTC(today.year, today.month, 0);
+  const firstWeekday = new Date(monthStart).getUTCDay() || 7;
+  const firstWeekStart = monthStart - (firstWeekday - 1) * DAY_MS;
+  const periods: WeeklyPeriodOption[] = [];
+
+  for (let start = firstWeekStart; start <= monthEnd; start += 7 * DAY_MS) {
+    const end = start + 6 * DAY_MS;
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    periods.push({
+      value: dateKey(start),
+      label: `第 ${periods.length + 1} 周 · ${startDate.getUTCMonth() + 1}月${startDate.getUTCDate()}日—${endDate.getUTCMonth() + 1}月${endDate.getUTCDate()}日`,
+      disabled: start > currentWeekStart
+    });
+  }
+
+  return periods;
+}
+
+function defaultWeeklyPeriod() {
+  const today = chinaDateParts();
+  const todayTimestamp = Date.UTC(today.year, today.month - 1, today.day);
+  const weekday = new Date(todayTimestamp).getUTCDay() || 7;
+  return dateKey(todayTimestamp - (weekday - 1) * DAY_MS);
 }
 
 function fitInputText(value: string, maxCharacters: number) {
@@ -147,6 +204,8 @@ export function SceneOutputs({
   const [showReceiptNote, setShowReceiptNote] = useState(true);
   const [receiptNote, setReceiptNote] = useState("本周大脑进货完成");
   const [showBooxStamp, setShowBooxStamp] = useState(true);
+  const [weeklyPeriodOptions] = useState(currentMonthWeeklyPeriods);
+  const [selectedWeek, setSelectedWeek] = useState(defaultWeeklyPeriod);
   const [selectedMonth, setSelectedMonth] = useState(defaultCalendarMonth);
   const [calendarNote, setCalendarNote] = useState("");
   const [calendarName, setCalendarName] = useState("");
@@ -207,6 +266,7 @@ export function SceneOutputs({
           receiptNote,
           showReceiptNote,
           showBooxStamp,
+          selectedWeek,
           selectedMonth,
           calendarNote,
           calendarName,
@@ -236,7 +296,7 @@ export function SceneOutputs({
         data.dataSource === "weread" ? "已使用微信读书真实数据" : "当前使用示例数据";
       const calendarText =
         scene.key === "reading_calendar" && data.dataSource === "weread"
-          ? "；日期与时长为真实数据，跨日书目条带按月度高频书籍排布"
+          ? "；日期与时长为真实数据，未确认日期按相邻书目或月度阅读时长最高书目补齐"
           : "";
       const receiptText =
         scene.key === "weekly_receipt" && data.dataSource === "weread"
@@ -268,6 +328,7 @@ export function SceneOutputs({
     showReceiptNote,
     receiptNote,
     showBooxStamp,
+    selectedWeek,
     selectedMonth,
     calendarNote,
     calendarName,
@@ -349,8 +410,27 @@ export function SceneOutputs({
 
   function renderSceneFields(scene: Scene) {
     if (scene.key === "weekly_receipt") {
+      const loadedExcerptCount = receiptExcerpts?.filter((excerpt) => excerpt.trim()).length ?? 0;
       return (
         <>
+          <label className="config-block" htmlFor="receipt-week-period">
+            <span className="label">周期</span>
+            <select
+              className="select"
+              id="receipt-week-period"
+              value={selectedWeek}
+              onChange={(event) => {
+                setSelectedWeek(event.target.value);
+                setReceiptExcerpts(null);
+              }}
+            >
+              {weeklyPeriodOptions.map((period) => (
+                <option disabled={period.disabled} key={period.value} value={period.value}>
+                  {period.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="config-block" htmlFor="receipt-store-name">
             <span className="label">商店名称</span>
             <input className="input receipt-store-name-input" id="receipt-store-name" maxLength={weeklyReceiptLimits.storeName} placeholder="购物小票" value={receiptStoreName} onChange={(event) => setReceiptStoreName(event.target.value)} />
@@ -378,8 +458,12 @@ export function SceneOutputs({
               onClick={() => setReceiptExcerptsOpen((current) => !current)}
               type="button"
             >
-              <span>最新划线</span>
-              <small>5 条，可展开修改</small>
+              <span>最新划线（可选修改）</span>
+              <small>
+                {receiptExcerpts === null
+                  ? "正在查询最新划线"
+                  : `${loadedExcerptCount}/5 条已获取；空白项可手动填写`}
+              </small>
             </button>
             {receiptExcerptsOpen ? (
               <div className="receipt-excerpts">

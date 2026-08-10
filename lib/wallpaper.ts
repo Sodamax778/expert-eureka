@@ -34,6 +34,7 @@ type GenerateInput = {
   receiptNote?: string;
   showReceiptNote?: boolean;
   showBooxStamp?: boolean;
+  selectedWeek?: string;
   selectedMonth?: string;
   calendarNote?: string;
   calendarName?: string;
@@ -77,6 +78,26 @@ function ellipsizeBookTitle(value: string, maxCharacters: number) {
   const characters = Array.from(value.trim());
   if (characters.length <= maxCharacters) return characters.join("");
   return `${characters.slice(0, Math.max(1, maxCharacters - 1)).join("")}...`;
+}
+
+function weeklyDurationLabel(value: number | undefined) {
+  const minutes = Math.max(0, Math.round(value || 0));
+  if (minutes === 0) return "0分钟";
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return hours > 0 ? `${hours}小时${remainingMinutes}分钟` : `${minutes}分钟`;
+}
+
+function dailyDurationLabel(item: WereadSnapshot["dailyReading"][number]) {
+  const seconds = Math.max(
+    0,
+    Math.round(
+      typeof item.readingSeconds === "number"
+        ? item.readingSeconds
+        : (item.readingMinutes || 0) * 60
+    )
+  );
+  return `${Math.round(seconds / 60)}m`;
 }
 
 function clampDimension(value: number | undefined, fallback: number) {
@@ -247,7 +268,7 @@ function weeklyTableReceiptTemplate(
   snapshot: WallpaperSnapshot
 ) {
   const margin = Math.round(width * 0.052);
-  const paper = "#fbfaf6";
+  const paper = "#ffffff";
   const paperTexture = weeklyReceiptTexture();
   const fontTitle = Math.max(56, Math.round(width * 0.086));
   const fontItem = Math.max(28, Math.round(width * 0.038));
@@ -283,10 +304,8 @@ function weeklyTableReceiptTemplate(
       const readingMinutes =
         typeof book.readingMinutes === "number"
           ? book.readingMinutes
-          : Math.round(snapshot.readingMinutes / Math.max(details.length, 1));
-      const duration = book.title
-        ? `${Math.floor(readingMinutes / 60)}小时${String(readingMinutes % 60).padStart(2, "0")}分`
-        : "";
+          : 0;
+      const duration = book.title ? weeklyDurationLabel(readingMinutes) : "";
       const progress = Math.max(0, Math.min(100, Math.round(book.progress || 0)));
       const displayTitle = ellipsizeBookTitle(book.title, weeklyReceiptLimits.bookTitle);
       return `
@@ -327,7 +346,7 @@ function weeklyTableReceiptTemplate(
         .note{font:800 ${Math.round(fontBody * 1.26)}px "Songti SC","Microsoft YaHei",serif;fill:#222}
       </style>
       <rect width="100%" height="100%" class="bg"/>
-      ${paperTexture ? `<image href="${paperTexture}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice" opacity=".82"/>` : ""}
+      ${paperTexture ? `<image href="${paperTexture}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice" opacity=".34"/>` : ""}
       <text x="${width - margin}" y="${Math.round(height * 0.092)}" class="title" text-anchor="end">${escapeXml(displayStoreName)}</text>
       <text x="${width - margin}" y="${Math.round(height * 0.143)}" class="storeSubtitle" text-anchor="end">${escapeXml(displayStoreSubtitle)}</text>
       <text x="${margin}" y="${Math.round(height * 0.062)}" class="meta">打印时间：${printDate}</text>
@@ -676,7 +695,7 @@ function calendarTemplate(
         .filter((day) => day >= 1 && day <= daysInMonth)
     )
   ).sort((a, b) => a - b);
-  const minutesByDay = new Map(realDailyReading.map((item) => [item.day, item.readingMinutes]));
+  const durationByDay = new Map(realDailyReading.map((item) => [item.day, dailyDurationLabel(item)]));
   const bookTitles = (snapshot.topBooks.length ? snapshot.topBooks : ["正在阅读", "本月书单", "随手翻阅"]).slice(0, 5);
   const cutePalette = ["#f3c8d8", "#d8ebc9", "#cbd9f3", "#f6e3a6", "#ded0ec"];
   const simplePalette = ["#171717", "#555", "#8b8b87", "#bdbdb7", "#deded8"];
@@ -759,11 +778,11 @@ function calendarTemplate(
     const row = Math.floor(position / 7);
     const x = margin + col * cellWidth;
     const y = gridTop + row * rowHeight;
-    const minutes = minutesByDay.get(day);
+    const duration = durationByDay.get(day);
     return `
       <rect x="${x}" y="${y}" width="${cellWidth}" height="${rowHeight}" fill="${col === 0 || col === 6 ? (isCute ? "#fcfbf7" : "#f8f8f5") : "#fff"}" stroke="#111" stroke-opacity=".12"/>
       <text x="${x + Math.round(cellWidth * 0.1)}" y="${y + dateHeaderHeight * 0.64}" class="day">${day}</text>
-      ${minutes ? `<text x="${x + cellWidth - Math.round(cellWidth * 0.1)}" y="${y + dateHeaderHeight * 0.62}" class="minutes" text-anchor="end">${minutes}m</text>` : ""}
+      ${duration ? `<text x="${x + cellWidth - Math.round(cellWidth * 0.1)}" y="${y + dateHeaderHeight * 0.62}" class="minutes" text-anchor="end">${duration}</text>` : ""}
     `;
   }).join("");
 
@@ -796,7 +815,7 @@ function calendarTemplate(
       `
     )
     .join("");
-  const sourceNote = snapshot.source === "weread" ? "日期与时长来自微信读书，书目条带按月度高频书籍排布" : "本地示例排布";
+  const sourceNote = snapshot.source === "weread" ? "日期与时长来自微信读书，连续条带仅表示发生阅读" : "本地示例排布";
 
   return `
     <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
@@ -899,7 +918,7 @@ function readingCalendarTemplate(
       )
     )
   ).sort((a, b) => a - b);
-  const minutesByDay = new Map(realDailyReading.map((item) => [item.day, item.readingMinutes]));
+  const durationByDay = new Map(realDailyReading.map((item) => [item.day, dailyDurationLabel(item)]));
   const bookTitles = (
     snapshot.topBooks.length ? snapshot.topBooks : ["正在阅读", "本月书单", "随手翻阅"]
   ).slice(0, 5);
@@ -933,7 +952,50 @@ function readingCalendarTemplate(
     });
   });
 
-  if (scheduledDaysByBook.size > 0) {
+  if (snapshot.source === "weread") {
+    const explicitTitleByDay = new Map<number, string>();
+    realDailyReading.forEach((item) => {
+      const title = item.books?.find((bookTitle) => bookTitle.trim())?.trim();
+      if (title) explicitTitleByDay.set(item.day, title);
+    });
+    const anchoredDays = Array.from(explicitTitleByDay.keys()).sort((a, b) => a - b);
+    const fallbackTitle = bookTitles[0] || "本月书目";
+    const inferredDaysByBook = new Map<string, number[]>();
+
+    activeDays.forEach((day) => {
+      let title = explicitTitleByDay.get(day);
+      if (!title && anchoredDays.length) {
+        const nearestDay = anchoredDays.reduce((nearest, candidate) => {
+          const candidateDistance = Math.abs(candidate - day);
+          const nearestDistance = Math.abs(nearest - day);
+          return candidateDistance < nearestDistance ||
+            (candidateDistance === nearestDistance && candidate < nearest)
+            ? candidate
+            : nearest;
+        });
+        title = explicitTitleByDay.get(nearestDay);
+      }
+      const resolvedTitle = title || fallbackTitle;
+      const days = inferredDaysByBook.get(resolvedTitle) || [];
+      days.push(day);
+      inferredDaysByBook.set(resolvedTitle, days);
+    });
+
+    let inferredBookIndex = 0;
+    inferredDaysByBook.forEach((days, title) => {
+      const rankedIndex = bookTitles.indexOf(title);
+      const colorIndex = rankedIndex >= 0 ? rankedIndex : inferredBookIndex;
+      groupContiguousDays(days).forEach((run) => {
+        readingSpans.push({
+          title,
+          startDay: run[0],
+          endDay: run[run.length - 1],
+          colorIndex: colorIndex % palette.length
+        });
+      });
+      inferredBookIndex += 1;
+    });
+  } else if (scheduledDaysByBook.size > 0) {
     scheduledDaysByBook.forEach((days, title) => {
       const colorIndex = Math.max(0, bookTitles.indexOf(title)) % palette.length;
       groupContiguousDays(days).forEach((run) => {
@@ -1026,12 +1088,12 @@ function readingCalendarTemplate(
       const value = (position * 37 + salt * 19 + seed * 13 + month * 7) % 17;
       return ((value - 8) / 8) * amplitude;
     };
-    const minutes = day >= 1 && day <= daysInMonth ? minutesByDay.get(day) : undefined;
+    const duration = day >= 1 && day <= daysInMonth ? durationByDay.get(day) : undefined;
     const dayLabel =
       day >= 1 && day <= daysInMonth
         ? `
           <text x="${x + Math.round(cellWidth * 0.1)}" y="${y + dateHeaderHeight * 0.68}" class="day">${day}</text>
-          ${minutes ? `<text x="${x + cellWidth - Math.round(cellWidth * 0.09)}" y="${y + dateHeaderHeight * 0.65}" class="minutes" text-anchor="end">${minutes}m</text>` : ""}
+          ${duration ? `<text x="${x + cellWidth - Math.round(cellWidth * 0.09)}" y="${y + dateHeaderHeight * 0.65}" class="minutes" text-anchor="end">${duration}</text>` : ""}
         `
         : "";
     const cellShape = isDoodle
@@ -1667,6 +1729,12 @@ export async function generateWallpaper(input: GenerateInput) {
     /^2026-(0[1-9]|1[0-2])$/.test(input.selectedMonth)
       ? input.selectedMonth
       : undefined;
+  const requestedWeek =
+    input.templateKey === "weekly_receipt" &&
+    input.selectedWeek &&
+    /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(input.selectedWeek)
+      ? input.selectedWeek
+      : undefined;
   const booxSnapshot = getMockBooxSnapshot();
   const snapshot =
     selectedDataMode === "boox"
@@ -1680,7 +1748,7 @@ export async function generateWallpaper(input: GenerateInput) {
       : selectedDataMode === "mock"
       ? { ...getMockWereadSnapshot(), source: "mock" as const }
       : input.templateKey === "weekly_receipt"
-        ? await getWeeklyReceiptSnapshot(input.skillKey!)
+        ? await getWeeklyReceiptSnapshot(input.skillKey!, requestedWeek)
         : await getMonthlyReceiptSnapshot(input.skillKey!, requestedCalendarMonth);
   // 只有需要真实封面/书目信息的模板才额外请求书架，降低网关调用次数和生成延迟。
   const needsShelf = input.templateKey === "bookshelf_wall" || input.templateKey === "cover_collage" || input.templateKey === "annotations_card";

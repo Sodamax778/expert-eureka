@@ -19,6 +19,7 @@ export type WereadSnapshot = {
   dailyReading: Array<{
     day: number;
     readingMinutes: number;
+    readingSeconds?: number;
     books?: string[];
   }>;
 };

@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
       receiptNote?: string;
       showReceiptNote?: boolean;
       showBooxStamp?: boolean;
+      selectedWeek?: string;
       selectedMonth?: string;
       calendarNote?: string;
       calendarName?: string;
@@ -80,6 +81,7 @@ export async function POST(request: NextRequest) {
       receiptNote: body.receiptNote,
       showReceiptNote: body.showReceiptNote,
       showBooxStamp: body.showBooxStamp,
+      selectedWeek: body.selectedWeek,
       selectedMonth: body.selectedMonth,
       calendarNote: body.calendarNote,
       calendarName: body.calendarName,

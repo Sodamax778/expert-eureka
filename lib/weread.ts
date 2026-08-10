@@ -192,6 +192,37 @@ function yearLabel() {
   return String(chinaDateParts(new Date()).year);
 }
 
+function timestampMilliseconds(value: number | undefined) {
+  if (!value || !Number.isFinite(value)) return 0;
+  return value < 1_000_000_000_000 ? value * 1000 : value;
+}
+
+function currentChinaWeekStart() {
+  const now = new Date();
+  const chinaNow = new Date(now.getTime() + CHINA_TIME_OFFSET_MS);
+  const weekday = chinaNow.getUTCDay() || 7;
+  const chinaMidnight =
+    Date.UTC(chinaNow.getUTCFullYear(), chinaNow.getUTCMonth(), chinaNow.getUTCDate()) -
+    CHINA_TIME_OFFSET_MS;
+  return chinaMidnight - (weekday - 1) * 24 * 60 * 60 * 1000;
+}
+
+function chinaWeekStartFromDateKey(value: string | undefined) {
+  const match = value?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return undefined;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const dateOnly = Date.UTC(year, month - 1, day);
+  const parsed = new Date(dateOnly);
+  const isValidDate =
+    parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day;
+  if (!isValidDate || parsed.getUTCDay() !== 1) return undefined;
+  return dateOnly - CHINA_TIME_OFFSET_MS;
+}
+
 function normalizeDailyReadTimes(dailyReadTimes: Record<string, number> | undefined, month: string) {
   // 兼容 Skill 可能返回的 YYYYMMDD、日号或秒/毫秒时间戳键。
   const monthPrefix = month.replace("-", "");
@@ -212,39 +243,44 @@ function normalizeDailyReadTimes(dailyReadTimes: Record<string, number> | undefi
           if (chinaMonth === month) day = chinaDate.day;
         }
       }
+      const readingSeconds = Math.max(0, Math.round(Number(seconds) || 0));
       return {
         day,
-        readingMinutes: Math.max(1, secondsToMinutes(seconds))
+        readingSeconds,
+        readingMinutes: secondsToMinutes(readingSeconds)
       };
     })
-    .filter((item) => item.day >= 1 && item.day <= 31)
+    .filter((item) => item.day >= 1 && item.day <= 31 && item.readingSeconds >= 60)
     .sort((a, b) => a.day - b.day);
 }
 
 async function getReadDataSnapshot(
   skillKey: string,
   mode: "weekly" | "monthly",
-  requestedMonth?: string
+  requestedMonth?: string,
+  requestedWeekStart?: string
 ): Promise<WereadSnapshot & { source: "weread" }> {
   const validRequestedMonth = requestedMonth && /^2026-(0[1-9]|1[0-2])$/.test(requestedMonth)
     ? requestedMonth
     : undefined;
-  const baseTime = validRequestedMonth
-    ? Math.floor(
-        (Date.UTC(
-          Number(validRequestedMonth.slice(0, 4)),
-          Number(validRequestedMonth.slice(5)) - 1,
-          1
-        ) -
-          CHINA_TIME_OFFSET_MS) /
-          1000
-      )
+  const selectedWeekStart =
+    mode === "weekly" ? chinaWeekStartFromDateKey(requestedWeekStart) : undefined;
+  const validRequestedWeek = selectedWeekStart !== undefined ? requestedWeekStart : undefined;
+  const baseTimeMilliseconds = validRequestedMonth
+    ? Date.UTC(
+        Number(validRequestedMonth.slice(0, 4)),
+        Number(validRequestedMonth.slice(5)) - 1,
+        1
+      ) - CHINA_TIME_OFFSET_MS
+    : selectedWeekStart;
+  const baseTime = baseTimeMilliseconds
+    ? Math.floor(baseTimeMilliseconds / 1000)
     : undefined;
   const detail = await callWereadGatewayWithKey<ReadDataDetail>(skillKey, "/readdata/detail", {
     mode,
     ...(baseTime ? { baseTime } : {})
   });
-  const snapshotMonth = validRequestedMonth || monthLabel();
+  const snapshotMonth = validRequestedMonth || validRequestedWeek?.slice(0, 7) || monthLabel();
 
   const topBookDetails =
     detail.readLongest
@@ -280,8 +316,9 @@ export async function getMonthlyReceiptSnapshot(skillKey: string, requestedMonth
   return getReadDataSnapshot(skillKey, "monthly", requestedMonth);
 }
 
-export async function getWeeklyReceiptSnapshot(skillKey: string) {
-  const base = await getReadDataSnapshot(skillKey, "weekly");
+export async function getWeeklyReceiptSnapshot(skillKey: string, requestedWeekStart?: string) {
+  const selectedWeekStart = chinaWeekStartFromDateKey(requestedWeekStart);
+  const base = await getReadDataSnapshot(skillKey, "weekly", undefined, requestedWeekStart);
   const [shelf, notebooks] = await Promise.all([
     getBookshelfSnapshot(skillKey).catch(() => null),
     callWereadGatewayWithKey<UserNotebooks>(skillKey, "/user/notebooks", { count: 20 }).catch(() => null)
@@ -292,7 +329,8 @@ export async function getWeeklyReceiptSnapshot(skillKey: string) {
       .map((book) => ({
         bookId: book.bookId,
         title: book.title,
-        author: book.author || "作者未知"
+        author: book.author || "作者未知",
+        readUpdateTime: book.readUpdateTime
       })) || [];
   const notebookBooks =
     notebooks?.books
@@ -303,9 +341,20 @@ export async function getWeeklyReceiptSnapshot(skillKey: string) {
       }))
       .filter((book) => Boolean(book.bookId && book.title))
       .slice(0, 20) || [];
+  const weekStart = selectedWeekStart ?? currentChinaWeekStart();
+  const periodEnd = Math.min(weekStart + 7 * 24 * 60 * 60 * 1000, Date.now() + 5 * 60 * 1000);
+  const weeklyRecentBooks = recentBooks.filter((book) => {
+    const updateTime = timestampMilliseconds(book.readUpdateTime);
+    return updateTime >= weekStart && updateTime < periodEnd;
+  });
   const seenTitles = new Set<string>();
-  // 本周阅读排行优先；不足 5 本时，依次用最近阅读记录和最近有笔记的书补齐。
-  const sourceBooks = [...base.topBookDetails, ...recentBooks, ...notebookBooks]
+  // Skill 周统计是自然周书目的权威来源；不足 5 本时才用该周更新、最近打开和最近笔记补足。
+  const sourceBooks = [
+    ...base.topBookDetails,
+    ...weeklyRecentBooks,
+    ...recentBooks,
+    ...notebookBooks
+  ]
     .filter((book) => {
       const key = book.title.trim().toLocaleLowerCase();
       if (!key || seenTitles.has(key)) return false;
@@ -333,7 +382,8 @@ export async function getWeeklyReceiptSnapshot(skillKey: string) {
         .find((item) => Boolean(item.markText?.trim()));
       return {
         ...book,
-        readingMinutes: match?.readingMinutes ?? secondsToMinutes(progress?.book?.recordReadingTime),
+        // 数量列统一使用自然周口径；没有本周时长的补位书显示 0 分钟。
+        readingMinutes: match?.readingMinutes ?? 0,
         progress: Math.max(0, Math.min(100, Math.round(progress?.book?.progress ?? match?.progress ?? 0))),
         summary: latestHighlight?.markText?.trim() || ""
       };
