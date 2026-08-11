@@ -384,7 +384,7 @@ export function SceneOutputs({
         imageUrl: result.imageUrl,
         width: result.width,
         height: result.height,
-        filename: `xiaowen-${selected.key}-${result.width}x${result.height}.jpg`
+        filename: `max-${selected.key}-${result.width}x${result.height}.jpg`
       });
       setStatus("JPG 图片已下载。");
     } catch (error) {
