@@ -71,5 +71,3 @@ lib/custom-fonts.ts          临时字体校验与 WOFF2 子集化
 
 1. [产品设计文档](docs/product-design.md)
 2. [研发接手说明](docs/developer-handoff.md)
-3. [每日自动更新屏保 PRD](docs/auto-refresh-wallpaper-prd.md)
-4. [设计图片清单与交付要求](docs/design-asset-checklist.md)

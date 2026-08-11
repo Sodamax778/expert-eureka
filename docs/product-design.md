@@ -418,7 +418,6 @@ templates/
 
 ## 8. 设计师交付与占位规范
 
-具体图片数量、母版尺寸、切图格式和验收清单见 [`design-asset-checklist.md`](design-asset-checklist.md)。
 
 只提供一张合并后的 PNG 不够，因为程序无法单独替换文字和书封。设计交付应为“可替换占位版设计稿”。
 
