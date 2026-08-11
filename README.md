@@ -2,6 +2,10 @@
 
 薯饼壁纸实验室把微信读书的阅读记录填入固定 SVG 模板，生成适配文石 Leaf 系列的 JPG 壁纸。当前版本不调用 AI 生图，核心是“数据归一化 + 模板占位渲染”。
 
+在线访问：[https://m8mi6m.top/](https://m8mi6m.top/)
+
+网站可以直接访问使用。服务目前部署在中国香港节点，中国大陆访问及生成屏保时可能会稍慢，请耐心等待。
+
 ## 当前能力
 
 - 微信读书 Skill Key 真实调用，Key 只保存在用户自己的浏览器。
@@ -38,23 +42,6 @@ pnpm dev
 
 访问 `http://localhost:3000`。公开部署必须使用 HTTPS。
 
-## EdgeOne Makers 部署
-
-项目已包含 `edgeone.json`。把代码推送到 GitHub 后，在 EdgeOne Makers 导入仓库即可，无需服务器、数据库或环境变量。
-
-部署时使用：
-
-```text
-框架：Next.js
-Node.js：22.11.0
-安装命令：pnpm install --frozen-lockfile
-构建命令：pnpm build
-输出目录：.next
-生产分支：main
-```
-
-详细步骤见 [GitHub + EdgeOne 部署说明](docs/public-deployment.md)。
-
 ## 检查与构建
 
 ```bash
@@ -76,15 +63,13 @@ lib/weread.ts                微信读书 Skill 调用与数据归一化
 lib/mock-boox.ts             文石模拟数据，后续由真实适配器替换
 lib/wallpaper.ts             模板选择、SVG 渲染和字体注入总入口
 lib/custom-fonts.ts          临时字体校验与 WOFF2 子集化
-docs/public-deployment.md    公开部署说明
 ```
 
 `.env*`、`.data/`、`node_modules/` 和 `.next/` 不进入 Git。旧版开发机上的 `.data/` 不会被新代码读取，可在确认不再需要后自行清理。
 
 ## 先读文档
 
-1. [GitHub + EdgeOne 部署说明](docs/public-deployment.md)
-2. [产品设计文档](docs/product-design.md)
-3. [研发接手说明](docs/developer-handoff.md)
-4. [每日自动更新屏保 PRD](docs/auto-refresh-wallpaper-prd.md)
-5. [设计图片清单与交付要求](docs/design-asset-checklist.md)
+1. [产品设计文档](docs/product-design.md)
+2. [研发接手说明](docs/developer-handoff.md)
+3. [每日自动更新屏保 PRD](docs/auto-refresh-wallpaper-prd.md)
+4. [设计图片清单与交付要求](docs/design-asset-checklist.md)

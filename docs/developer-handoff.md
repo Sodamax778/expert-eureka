@@ -87,7 +87,7 @@ pnpm build
 pnpm start
 ```
 
-最低要求是 Node.js 20+、HTTPS 和可访问微信读书网关的网络。无需可写持久化目录、数据库或服务端密钥。服务器部署见 `docs/public-deployment.md`。
+最低要求是 Node.js 20+、HTTPS 和可访问微信读书网关的网络。无需可写持久化目录、数据库或服务端密钥。
 
 ## 9. 当前优先级
 
