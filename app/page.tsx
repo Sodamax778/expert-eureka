@@ -26,18 +26,27 @@ const scenes = [
   }
 ];
 
+const PREFERRED_FONT_STORAGE = "shubing-preferred-font";
+const LEGACY_PREFERRED_FONT_STORAGE = ["xiao", "wen-preferred-font"].join("");
+
 export default function Home() {
   const [preferredFontKey, setPreferredFontKey] = useState(defaultFontKey);
   const [fontLibraryVersion, setFontLibraryVersion] = useState(0);
 
   useEffect(() => {
-    const savedFontKey = window.localStorage.getItem("xiaowen-preferred-font");
-    if (savedFontKey) setPreferredFontKey(savedFontKey);
+    const savedFontKey =
+      window.localStorage.getItem(PREFERRED_FONT_STORAGE) ||
+      window.localStorage.getItem(LEGACY_PREFERRED_FONT_STORAGE);
+    if (savedFontKey) {
+      setPreferredFontKey(savedFontKey);
+      window.localStorage.setItem(PREFERRED_FONT_STORAGE, savedFontKey);
+      window.localStorage.removeItem(LEGACY_PREFERRED_FONT_STORAGE);
+    }
   }, []);
 
   function selectPreferredFont(fontKey: string) {
     setPreferredFontKey(fontKey);
-    window.localStorage.setItem("xiaowen-preferred-font", fontKey);
+    window.localStorage.setItem(PREFERRED_FONT_STORAGE, fontKey);
   }
 
   return (

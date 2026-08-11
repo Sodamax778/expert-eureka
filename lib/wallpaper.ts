@@ -213,7 +213,7 @@ async function imageUrlToDataUri(url: string) {
   try {
     const response = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 XiaowenAI Weread Wallpaper"
+        "User-Agent": "Mozilla/5.0 Shubing Weread Wallpaper"
       }
     });
     if (!response.ok) return "";
@@ -385,7 +385,7 @@ function receiptTemplate(
   const period = input.receiptOrderTime?.trim() || (input.templateKey === "yearly_receipt" ? snapshot.year : snapshot.month);
   const periodPrefix = input.templateKey === "weekly_receipt" ? "本周" : input.templateKey === "yearly_receipt" ? "年度" : "本月";
   const deviceNumber = input.receiptDeviceNumber?.trim() || "BOOX-001";
-  const buyer = input.receiptBuyer?.trim() || "小文";
+  const buyer = input.receiptBuyer?.trim() || "薯饼";
   const receiptNote = input.receiptNote?.trim() || "本周大脑进货完成";
   const showReceiptNote = input.showReceiptNote !== false;
   const isMinimal = input.variant === "minimal";
@@ -441,7 +441,7 @@ function receiptTemplate(
       </style>
       <rect width="100%" height="100%" class="bg"/>
       <rect x="${Math.round(width * 0.045)}" y="${Math.round(height * 0.035)}" width="${Math.round(width * 0.91)}" height="${Math.round(height * 0.93)}" rx="${isMinimal ? 0 : Math.round(width * 0.018)}" fill="none" stroke="#111" stroke-opacity=".18" stroke-width="2"/>
-      <text x="${margin}" y="${Math.round(height * 0.075)}" class="small muted">XIAOWEN AI / READING STORE</text>
+      <text x="${margin}" y="${Math.round(height * 0.075)}" class="small muted">薯饼 / READING STORE</text>
       <text x="${margin}" y="${titleY}" class="title ink">${escapeXml(title)}</text>
       <text x="${margin}" y="${Math.round(height * 0.185)}" class="small muted">*** BRAIN SHOPPING RECEIPT ***</text>
       <line x1="${margin}" x2="${width - margin}" y1="${Math.round(height * 0.22)}" y2="${Math.round(height * 0.22)}" class="hairline"/>
@@ -649,7 +649,7 @@ async function coverTemplate(
         .cover-title{font:700 ${Math.max(18, Math.round(width * 0.026))}px -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;fill:#111}
       </style>
       <rect width="100%" height="100%" class="bg"/>
-      <text x="${Math.round(width * 0.08)}" y="${Math.round(height * 0.1)}" class="small">XIAOWEN AI / WEREAD</text>
+      <text x="${Math.round(width * 0.08)}" y="${Math.round(height * 0.1)}" class="small">薯饼 / WEREAD</text>
       <text x="${Math.round(width * 0.08)}" y="${Math.round(height * 0.16)}" class="title">${escapeXml(customTitle)}</text>
       ${covers}
       <text x="${Math.round(width * 0.08)}" y="${Math.round(height * 0.92)}" class="small">数据来源：${dataSourceLabel(snapshot.source)}</text>
@@ -1709,7 +1709,7 @@ function copywritingTemplate(input: GenerateInput, width: number, height: number
         .small{font:600 ${fontSmall}px -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;fill:#555}
       </style>
       <rect width="100%" height="100%" class="bg"/>
-      <text x="${margin}" y="${Math.round(height * 0.11)}" class="small">XIAOWEN AI / COPY WALLPAPER</text>
+      <text x="${margin}" y="${Math.round(height * 0.11)}" class="small">薯饼 / COPY WALLPAPER</text>
       <line x1="${margin}" x2="${width - margin}" y1="${Math.round(height * 0.2)}" y2="${Math.round(height * 0.2)}" stroke="#111" stroke-opacity=".18" stroke-width="2"/>
       ${lines}
       <text x="${margin}" y="${Math.round(height * 0.91)}" class="small">无需数据源 · 用户输入</text>

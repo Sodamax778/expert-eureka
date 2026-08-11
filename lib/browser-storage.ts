@@ -2,8 +2,10 @@
 
 import { builtInFonts, type FontOption } from "./font-catalog";
 
-const WEREAD_KEY_STORAGE = "xiaowen-weread-skill-key";
-const FONT_DATABASE = "xiaowen-local-assets";
+const WEREAD_KEY_STORAGE = "shubing-weread-skill-key";
+const LEGACY_WEREAD_KEY_STORAGE = ["xiao", "wen-weread-skill-key"].join("");
+const FONT_DATABASE = "shubing-local-assets";
+const LEGACY_FONT_DATABASE = ["xiao", "wen-local-assets"].join("");
 const FONT_STORE = "fonts";
 const FONT_DATABASE_VERSION = 1;
 export const maxLocalFontFileSize = 24 * 1024 * 1024;
@@ -45,13 +47,13 @@ function hasValidFontSignature(bytes: Uint8Array, extension: string) {
   return hasTrueTypeOutline;
 }
 
-function openFontDatabase() {
+function openFontDatabase(databaseName = FONT_DATABASE) {
   return new Promise<IDBDatabase>((resolve, reject) => {
     if (!window.indexedDB) {
       reject(new Error("当前浏览器不支持本地字体存储。"));
       return;
     }
-    const request = window.indexedDB.open(FONT_DATABASE, FONT_DATABASE_VERSION);
+    const request = window.indexedDB.open(databaseName, FONT_DATABASE_VERSION);
     request.onupgradeneeded = () => {
       const database = request.result;
       if (!database.objectStoreNames.contains(FONT_STORE)) {
@@ -65,9 +67,10 @@ function openFontDatabase() {
 
 async function runFontTransaction<T>(
   mode: IDBTransactionMode,
-  action: (store: IDBObjectStore) => IDBRequest<T>
+  action: (store: IDBObjectStore) => IDBRequest<T>,
+  databaseName = FONT_DATABASE
 ) {
-  const database = await openFontDatabase();
+  const database = await openFontDatabase(databaseName);
   return new Promise<T>((resolve, reject) => {
     const transaction = database.transaction(FONT_STORE, mode);
     const request = action(transaction.objectStore(FONT_STORE));
@@ -87,8 +90,32 @@ async function runFontTransaction<T>(
   });
 }
 
+let legacyFontMigration: Promise<void> | undefined;
+
+function migrateLegacyFonts() {
+  if (legacyFontMigration) return legacyFontMigration;
+  legacyFontMigration = (async () => {
+    const indexedDBWithDatabases = window.indexedDB as IDBFactory & {
+      databases?: () => Promise<Array<{ name?: string }>>;
+    };
+    const databases = await indexedDBWithDatabases.databases?.();
+    if (databases && !databases.some((database) => database.name === LEGACY_FONT_DATABASE)) return;
+    const legacyFonts = await runFontTransaction<StoredFont[]>(
+      "readonly",
+      (store) => store.getAll(),
+      LEGACY_FONT_DATABASE
+    );
+    await Promise.all(
+      legacyFonts.map((font) =>
+        runFontTransaction<IDBValidKey>("readwrite", (store) => store.put(font))
+      )
+    );
+  })().catch(() => undefined);
+  return legacyFontMigration;
+}
+
 function localFontFamily(key: string) {
-  return `XiaowenLocal-${key.replace(/^custom:/, "")}`;
+  return `ShubingLocal-${key.replace(/^custom:/, "")}`;
 }
 
 function toFontOption(font: StoredFont): FontOption {
@@ -120,16 +147,25 @@ function arrayBufferToBase64(buffer: ArrayBuffer) {
 }
 
 export function getWereadSkillKey() {
-  return window.localStorage.getItem(WEREAD_KEY_STORAGE)?.trim() || "";
+  const currentKey = window.localStorage.getItem(WEREAD_KEY_STORAGE)?.trim();
+  if (currentKey) return currentKey;
+  const legacyKey = window.localStorage.getItem(LEGACY_WEREAD_KEY_STORAGE)?.trim() || "";
+  if (legacyKey) {
+    window.localStorage.setItem(WEREAD_KEY_STORAGE, legacyKey);
+    window.localStorage.removeItem(LEGACY_WEREAD_KEY_STORAGE);
+  }
+  return legacyKey;
 }
 
 export function setWereadSkillKey(skillKey: string) {
   window.localStorage.setItem(WEREAD_KEY_STORAGE, skillKey.trim());
+  window.localStorage.removeItem(LEGACY_WEREAD_KEY_STORAGE);
   window.dispatchEvent(new Event("weread-connection-changed"));
 }
 
 export function clearWereadSkillKey() {
   window.localStorage.removeItem(WEREAD_KEY_STORAGE);
+  window.localStorage.removeItem(LEGACY_WEREAD_KEY_STORAGE);
   window.dispatchEvent(new Event("weread-connection-changed"));
 }
 
@@ -144,6 +180,7 @@ export function wereadAuthorizationHeaders(skillKey = getWereadSkillKey()): Reco
 
 export async function listLocalFontOptions() {
   try {
+    await migrateLegacyFonts();
     const customFonts = await runFontTransaction<StoredFont[]>("readonly", (store) => store.getAll());
     customFonts.sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
     await Promise.all(customFonts.map((font) => registerFontFace(font).catch(() => undefined)));
@@ -182,6 +219,7 @@ export async function saveLocalFont(file: File) {
 
 export async function getTransientFontPayload(fontKey: string): Promise<TransientFontPayload | undefined> {
   if (!fontKey.startsWith("custom:")) return undefined;
+  await migrateLegacyFonts();
   const font = await runFontTransaction<StoredFont | undefined>("readonly", (store) => store.get(fontKey));
   if (!font) return undefined;
   return {

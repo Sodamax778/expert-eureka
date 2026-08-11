@@ -57,9 +57,9 @@ export async function resolveSvgFont(
   const fontBytes = decodeTransientFont(fontKey, transientFont);
   if (!fontBytes) return { cssFamily: builtIn.cssFamily, fontFace: "" };
 
-  const glyphs = Array.from(new Set(svgText)).sort().join("") || "小文AI";
+  const glyphs = Array.from(new Set(svgText)).sort().join("") || "薯饼";
   const subset = await subsetFont(fontBytes, glyphs, { targetFormat: "woff2" });
-  const family = "XiaowenTransientFont";
+  const family = "ShubingTransientFont";
   const dataUrl = `data:font/woff2;base64,${subset.toString("base64")}`;
   return {
     cssFamily: `"${family}","Microsoft YaHei",sans-serif`,
