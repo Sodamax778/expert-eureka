@@ -219,6 +219,7 @@ export function SceneOutputs({
   const [busy, setBusy] = useState(false);
   // 选项连续变化会产生并发请求，只允许最后一次请求更新预览，防止旧响应覆盖新配置。
   const generationId = useRef(0);
+  const generationAbort = useRef<AbortController | null>(null);
 
   function openScene(scene: Scene) {
     if (scene.key === "weekly_receipt") {
@@ -232,6 +233,10 @@ export function SceneOutputs({
 
   async function generatePreview(scene: Scene) {
     const requestId = ++generationId.current;
+    generationAbort.current?.abort();
+    const controller = new AbortController();
+    generationAbort.current = controller;
+    const timeout = window.setTimeout(() => controller.abort(), 55_000);
     setBusy(true);
     setStatus("正在读取数据并刷新预览...");
     try {
@@ -250,6 +255,7 @@ export function SceneOutputs({
         method: "POST",
         cache: "no-store",
         headers: requestHeaders,
+        signal: controller.signal,
         body: JSON.stringify({
           templateKey: scene.key,
           deviceKey,
@@ -305,8 +311,16 @@ export function SceneOutputs({
       setStatus(`${dataText}${calendarText}${receiptText}；场景占位已重新渲染。`);
     } catch (error) {
       if (requestId !== generationId.current) return;
-      setStatus(error instanceof Error ? error.message : "生成预览失败");
+      setStatus(
+        error instanceof Error && error.name === "AbortError"
+          ? "预览生成超时，请点击刷新预览重试。"
+          : error instanceof Error
+            ? error.message
+            : "生成预览失败"
+      );
     } finally {
+      window.clearTimeout(timeout);
+      if (generationAbort.current === controller) generationAbort.current = null;
       if (requestId === generationId.current) setBusy(false);
     }
   }

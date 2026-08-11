@@ -119,6 +119,8 @@ type BookInfo = GatewayResponse & {
   category?: string;
 };
 
+const WEREAD_REQUEST_TIMEOUT_MS = 15_000;
+
 export async function callWereadGatewayWithKey<T extends GatewayResponse>(
   apiKey: string,
   apiName: string,
@@ -134,15 +136,28 @@ export async function callWereadGatewayWithKey<T extends GatewayResponse>(
     skill_version: SKILL_VERSION
   };
 
-  const response = await fetch(WEREAD_GATEWAY, {
-    method: "POST",
-    cache: "no-store",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(body)
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), WEREAD_REQUEST_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(WEREAD_GATEWAY, {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("微信读书数据请求超时，请稍后重试。");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     const detail = await response.text();
