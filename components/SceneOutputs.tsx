@@ -212,7 +212,6 @@ export function SceneOutputs({
   const [showCalendarStickers, setShowCalendarStickers] = useState(true);
   const [fontOptions, setFontOptions] = useState<FontOption[]>(builtInFonts);
   const [fontKey, setFontKey] = useState(preferredFontKey);
-  const [shuffleSeed, setShuffleSeed] = useState(0);
   const [previewRevision, setPreviewRevision] = useState(0);
   const [result, setResult] = useState<GenerateResponse | null>(null);
   const [status, setStatus] = useState("选择场景后会自动生成预览。");
@@ -262,7 +261,6 @@ export function SceneOutputs({
           orientation,
           dataMode: "weread",
           variant,
-          shuffleSeed,
           receiptStoreName,
           receiptStoreSubtitle,
           receiptShippingDevice,
@@ -348,7 +346,6 @@ export function SceneOutputs({
     calendarName,
     showCalendarStickers,
     fontKey,
-    shuffleSeed,
     previewRevision
   ]);
 
@@ -599,9 +596,6 @@ export function SceneOutputs({
 
                 {renderSceneFields(selected)}
 
-                <button className="button secondary wide-button scene-shuffle" disabled={busy} onClick={() => setShuffleSeed((value) => value + 1)} type="button">
-                  换一批
-                </button>
               </div>
             </aside>
 

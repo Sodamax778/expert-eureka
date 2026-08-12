@@ -1169,10 +1169,6 @@ button {
   opacity: 0.45;
 }
 
-.wide-button {
-  width: 100%;
-}
-
 .modal-source-hint {
   margin: auto 24px 24px;
 }
@@ -2319,10 +2315,6 @@ body {
   margin: 0;
 }
 
-.scene-shuffle {
-  margin-top: 4px;
-}
-
 .scene-workbench .modal-preview {
   grid-template-rows: minmax(0, 1fr) auto auto;
   min-height: 0;
@@ -3421,7 +3413,6 @@ body {
   border-color: var(--ink);
 }
 
-.doodle-home .scene-shuffle,
 .doodle-home .refresh-preview,
 .doodle-home .download-button {
   border: 1.5px solid var(--ink);
