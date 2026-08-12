@@ -300,7 +300,7 @@ export function SceneOutputs({
         data.dataSource === "weread" ? "已使用微信读书真实数据" : "当前使用示例数据";
       const calendarText =
         scene.key === "reading_calendar" && data.dataSource === "weread"
-          ? "；日期与时长为真实数据，未确认日期按相邻书目或月度阅读时长最高书目补齐"
+          ? "；日期与时长为真实数据，逐日书名无法确认时按当月全部书目及各书时长分配，并保证每本至少出现一次"
           : "";
       const receiptText =
         scene.key === "weekly_receipt" && data.dataSource === "weread"

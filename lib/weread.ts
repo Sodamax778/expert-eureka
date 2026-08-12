@@ -297,7 +297,7 @@ async function getReadDataSnapshot(
   });
   const snapshotMonth = validRequestedMonth || validRequestedWeek?.slice(0, 7) || monthLabel();
 
-  const topBookDetails =
+  const normalizedBookDetails =
     detail.readLongest
       ?.map((item) => ({
         bookId: item.book?.bookId,
@@ -305,8 +305,10 @@ async function getReadDataSnapshot(
         author: item.book?.author || item.albumInfo?.authorName || "作者未知",
         readingMinutes: secondsToMinutes(item.readTime)
       }))
-      .filter((book) => Boolean(book.title))
-      .slice(0, 5) || [];
+      .filter((book) => Boolean(book.title)) || [];
+  // 小票最多展示 5 本；月历需要保留当月返回的全部书目，保证每本至少出现一次。
+  const topBookDetails =
+    mode === "weekly" ? normalizedBookDetails.slice(0, 5) : normalizedBookDetails;
   const topBooks = topBookDetails.map((book) => book.title);
 
   return {

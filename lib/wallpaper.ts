@@ -919,9 +919,13 @@ function readingCalendarTemplate(
     )
   ).sort((a, b) => a - b);
   const durationByDay = new Map(realDailyReading.map((item) => [item.day, dailyDurationLabel(item)]));
-  const bookTitles = (
-    snapshot.topBooks.length ? snapshot.topBooks : ["正在阅读", "本月书单", "随手翻阅"]
-  ).slice(0, 5);
+  const bookTitles = Array.from(
+    new Set(
+      (snapshot.topBooks.length ? snapshot.topBooks : ["正在阅读", "本月书单", "随手翻阅"])
+        .map((title) => title.trim())
+        .filter(Boolean)
+    )
+  );
   const palette = ["#161616", "#555", "#919191", "#c6c6c2", "#e4e4df"];
 
   type ReadingSpan = {
@@ -953,33 +957,73 @@ function readingCalendarTemplate(
   });
 
   if (snapshot.source === "weread") {
-    const explicitTitleByDay = new Map<number, string>();
+    const explicitTitlesByDay = new Map<number, string[]>();
     realDailyReading.forEach((item) => {
-      const title = item.books?.find((bookTitle) => bookTitle.trim())?.trim();
-      if (title) explicitTitleByDay.set(item.day, title);
+      const titles = Array.from(
+        new Set(item.books?.map((title) => title.trim()).filter(Boolean) || [])
+      );
+      if (titles.length) explicitTitlesByDay.set(item.day, titles);
     });
-    const anchoredDays = Array.from(explicitTitleByDay.keys()).sort((a, b) => a - b);
-    const fallbackTitle = bookTitles[0] || "本月书目";
     const inferredDaysByBook = new Map<string, number[]>();
 
-    activeDays.forEach((day) => {
-      let title = explicitTitleByDay.get(day);
-      if (!title && anchoredDays.length) {
-        const nearestDay = anchoredDays.reduce((nearest, candidate) => {
-          const candidateDistance = Math.abs(candidate - day);
-          const nearestDistance = Math.abs(nearest - day);
-          return candidateDistance < nearestDistance ||
-            (candidateDistance === nearestDistance && candidate < nearest)
-            ? candidate
-            : nearest;
-        });
-        title = explicitTitleByDay.get(nearestDay);
-      }
-      const resolvedTitle = title || fallbackTitle;
-      const days = inferredDaysByBook.get(resolvedTitle) || [];
-      days.push(day);
-      inferredDaysByBook.set(resolvedTitle, days);
+    explicitTitlesByDay.forEach((titles, day) => {
+      titles.forEach((title) => {
+        const days = inferredDaysByBook.get(title) || [];
+        days.push(day);
+        inferredDaysByBook.set(title, days);
+      });
     });
+
+    const unknownDays = activeDays.filter((day) => !explicitTitlesByDay.has(day));
+    const rankedBooks = bookTitles.map((title, index) => {
+      const detail = snapshot.topBookDetails.find((book) => book.title.trim() === title);
+      return {
+        title,
+        rank: index,
+        weight: Math.max(1, detail?.readingMinutes || bookTitles.length - index)
+      };
+    });
+    const assignedCounts = new Map(
+      rankedBooks.map(({ title }) => [title, inferredDaysByBook.get(title)?.length || 0])
+    );
+    const inferredUnknownDays = new Set<number>();
+
+    // 月度接口能提供全部书目，但不能确认每天对应哪本书。先把尚未出现的每本书
+    // 分配到未确认日期；日期少于书目时允许同一天出现多本，确保没有书目被遗漏。
+    const missingBooks = rankedBooks.filter(
+      ({ title }) => (assignedCounts.get(title) || 0) === 0
+    );
+    const candidateDays =
+      unknownDays.length >= missingBooks.length ? unknownDays : activeDays;
+    missingBooks.forEach(({ title }, index) => {
+      const day = candidateDays[index % candidateDays.length];
+      if (!day) return;
+      const days = inferredDaysByBook.get(title) || [];
+      days.push(day);
+      inferredDaysByBook.set(title, days);
+      assignedCounts.set(title, (assignedCounts.get(title) || 0) + 1);
+      if (unknownDays.includes(day)) inferredUnknownDays.add(day);
+    });
+
+    unknownDays
+      .filter((day) => !inferredUnknownDays.has(day))
+      .forEach((day) => {
+        if (!rankedBooks.length) return;
+        const nextBook = rankedBooks.reduce((best, candidate) => {
+          const candidateCount = assignedCounts.get(candidate.title) || 0;
+          const bestCount = assignedCounts.get(best.title) || 0;
+          const candidateScore = candidate.weight / (candidateCount + 1);
+          const bestScore = best.weight / (bestCount + 1);
+          return candidateScore > bestScore ||
+            (candidateScore === bestScore && candidate.rank < best.rank)
+            ? candidate
+            : best;
+        });
+        const days = inferredDaysByBook.get(nextBook.title) || [];
+        days.push(day);
+        inferredDaysByBook.set(nextBook.title, days);
+        assignedCounts.set(nextBook.title, (assignedCounts.get(nextBook.title) || 0) + 1);
+      });
 
     let inferredBookIndex = 0;
     inferredDaysByBook.forEach((days, title) => {
