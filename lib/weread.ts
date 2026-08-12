@@ -330,7 +330,44 @@ async function getReadDataSnapshot(
 }
 
 export async function getMonthlyReceiptSnapshot(skillKey: string, requestedMonth?: string) {
-  return getReadDataSnapshot(skillKey, "monthly", requestedMonth);
+  const [base, shelf] = await Promise.all([
+    getReadDataSnapshot(skillKey, "monthly", requestedMonth),
+    getBookshelfSnapshot(skillKey).catch(() => null)
+  ]);
+  if (!shelf || base.topBookDetails.length >= base.bookCount) return base;
+
+  const [year, month] = base.month.split("-").map(Number);
+  const monthStart = Date.UTC(year, month - 1, 1) - CHINA_TIME_OFFSET_MS;
+  const monthEnd = Date.UTC(year, month, 1) - CHINA_TIME_OFFSET_MS;
+  const seenTitles = new Set(
+    base.topBookDetails.map((book) => book.title.trim().toLocaleLowerCase()).filter(Boolean)
+  );
+  const monthlyShelfBooks = shelf.books
+    .filter((book) => {
+      const updateTime = timestampMilliseconds(book.readUpdateTime);
+      const titleKey = book.title.trim().toLocaleLowerCase();
+      return (
+        book.mediaType === "电子书" &&
+        updateTime >= monthStart &&
+        updateTime < monthEnd &&
+        Boolean(titleKey) &&
+        !seenTitles.has(titleKey)
+      );
+    })
+    .slice(0, Math.max(0, base.bookCount - base.topBookDetails.length))
+    .map((book) => ({
+      bookId: book.bookId,
+      title: book.title,
+      author: book.author || "作者未知",
+      readingMinutes: 0
+    }));
+
+  const topBookDetails = [...base.topBookDetails, ...monthlyShelfBooks];
+  return {
+    ...base,
+    topBooks: topBookDetails.map((book) => book.title),
+    topBookDetails
+  };
 }
 
 export async function getWeeklyReceiptSnapshot(skillKey: string, requestedWeekStart?: string) {
