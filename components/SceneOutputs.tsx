@@ -12,6 +12,7 @@ import {
 import type { TemplateKey } from "@/lib/templates";
 import { readingCalendarLimits, weeklyReceiptLimits } from "@/lib/layout-limits";
 import { readJsonResponse } from "@/lib/client-json";
+import { applyLocalFontToSvgPreview, revokeLocalFontPreview } from "@/lib/local-font-preview";
 
 type Scene = {
   key: TemplateKey;
@@ -220,6 +221,7 @@ export function SceneOutputs({
   // 选项连续变化会产生并发请求，只允许最后一次请求更新预览，防止旧响应覆盖新配置。
   const generationId = useRef(0);
   const generationAbort = useRef<AbortController | null>(null);
+  const previewObjectUrl = useRef<string | null>(null);
 
   function openScene(scene: Scene) {
     if (scene.key === "weekly_receipt") {
@@ -245,10 +247,9 @@ export function SceneOutputs({
         throw new Error("请先在首页装载微信读书 Skill Key。");
       }
       let selectedFontKey = fontKey;
-      let transientFont = await getTransientFontPayload(selectedFontKey);
+      const transientFont = await getTransientFontPayload(selectedFontKey);
       if (selectedFontKey.startsWith("custom:") && !transientFont) {
         selectedFontKey = defaultFontKey;
-        transientFont = undefined;
         setFontKey(defaultFontKey);
       }
       const variant = scene.key === "reading_calendar" ? "doodle" : "classic";
@@ -279,8 +280,8 @@ export function SceneOutputs({
           calendarNote,
           calendarName,
           showCalendarStickers,
-          fontKey: selectedFontKey,
-          transientFont
+          // 自定义字体只在浏览器本地注入，避免将十几 MB 的字体上传到云函数。
+          fontKey: transientFont ? defaultFontKey : selectedFontKey
         })
       });
       const data = await readJsonResponse<GenerateResponse & { error?: string }>(
@@ -291,7 +292,10 @@ export function SceneOutputs({
         throw new Error(data.error || "生成预览失败");
       }
       if (requestId !== generationId.current) return;
-      setResult(data);
+      const previewImageUrl = applyLocalFontToSvgPreview(data.imageUrl, transientFont);
+      revokeLocalFontPreview(previewObjectUrl.current);
+      previewObjectUrl.current = previewImageUrl.startsWith("blob:") ? previewImageUrl : null;
+      setResult({ ...data, imageUrl: previewImageUrl });
       const returnedExcerpts = data.receiptExcerpts;
       if (scene.key === "weekly_receipt" && Array.isArray(returnedExcerpts)) {
         setReceiptExcerpts(
@@ -392,6 +396,20 @@ export function SceneOutputs({
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [selected]);
+
+  useEffect(() => {
+    if (selected) return;
+    revokeLocalFontPreview(previewObjectUrl.current);
+    previewObjectUrl.current = null;
+    setResult(null);
+  }, [selected]);
+
+  useEffect(
+    () => () => {
+      revokeLocalFontPreview(previewObjectUrl.current);
+    },
+    []
+  );
 
   async function downloadResult() {
     if (!result || !selected) return;
