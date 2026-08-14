@@ -11,6 +11,7 @@ import {
 } from "@/lib/browser-storage";
 import type { TemplateKey } from "@/lib/templates";
 import { readingCalendarLimits, weeklyReceiptLimits } from "@/lib/layout-limits";
+import { readJsonResponse } from "@/lib/client-json";
 
 type Scene = {
   key: TemplateKey;
@@ -243,9 +244,12 @@ export function SceneOutputs({
       if (!savedSkillKey) {
         throw new Error("请先在首页装载微信读书 Skill Key。");
       }
-      const transientFont = await getTransientFontPayload(fontKey);
-      if (fontKey.startsWith("custom:") && !transientFont) {
-        throw new Error("当前浏览器中找不到所选字体，请重新导入。");
+      let selectedFontKey = fontKey;
+      let transientFont = await getTransientFontPayload(selectedFontKey);
+      if (selectedFontKey.startsWith("custom:") && !transientFont) {
+        selectedFontKey = defaultFontKey;
+        transientFont = undefined;
+        setFontKey(defaultFontKey);
       }
       const variant = scene.key === "reading_calendar" ? "doodle" : "classic";
       const requestHeaders: Record<string, string> = { "Content-Type": "application/json" };
@@ -275,21 +279,25 @@ export function SceneOutputs({
           calendarNote,
           calendarName,
           showCalendarStickers,
-          fontKey,
+          fontKey: selectedFontKey,
           transientFont
         })
       });
-      const data = await response.json();
+      const data = await readJsonResponse<GenerateResponse & { error?: string }>(
+        response,
+        "生成预览失败"
+      );
       if (!response.ok) {
         throw new Error(data.error || "生成预览失败");
       }
       if (requestId !== generationId.current) return;
       setResult(data);
-      if (scene.key === "weekly_receipt" && Array.isArray(data.receiptExcerpts)) {
+      const returnedExcerpts = data.receiptExcerpts;
+      if (scene.key === "weekly_receipt" && Array.isArray(returnedExcerpts)) {
         setReceiptExcerpts(
           (current) =>
             current ??
-            data.receiptExcerpts
+            returnedExcerpts
               .slice(0, 5)
               .map((excerpt: unknown) =>
                 fitInputText(String(excerpt ?? ""), weeklyReceiptLimits.excerpt)
@@ -350,14 +358,26 @@ export function SceneOutputs({
   ]);
 
   useEffect(() => {
+    let cancelled = false;
     listLocalFontOptions()
-      .then(setFontOptions)
-      .catch(() => setFontOptions(builtInFonts));
-  }, [fontLibraryVersion]);
-
-  useEffect(() => {
-    setFontKey(preferredFontKey);
-  }, [preferredFontKey]);
+      .then((availableFonts) => {
+        if (cancelled) return;
+        setFontOptions(availableFonts);
+        setFontKey(
+          availableFonts.some((font) => font.key === preferredFontKey)
+            ? preferredFontKey
+            : defaultFontKey
+        );
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setFontOptions(builtInFonts);
+        setFontKey(defaultFontKey);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fontLibraryVersion, preferredFontKey]);
 
   useEffect(() => {
     if (!selected) return;

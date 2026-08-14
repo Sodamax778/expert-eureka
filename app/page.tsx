@@ -6,6 +6,7 @@ import { CompactConnectionPanel } from "@/components/ConnectionPanel";
 import { FontLibrary } from "@/components/FontLibrary";
 import { SceneOutputs } from "@/components/SceneOutputs";
 import { SkillStatusPill } from "@/components/SkillStatusPill";
+import { listLocalFontOptions } from "@/lib/browser-storage";
 import { defaultFontKey } from "@/lib/font-catalog";
 import type { TemplateKey } from "@/lib/templates";
 
@@ -34,14 +35,23 @@ export default function Home() {
   const [fontLibraryVersion, setFontLibraryVersion] = useState(0);
 
   useEffect(() => {
-    const savedFontKey =
-      window.localStorage.getItem(PREFERRED_FONT_STORAGE) ||
-      window.localStorage.getItem(LEGACY_PREFERRED_FONT_STORAGE);
-    if (savedFontKey) {
-      setPreferredFontKey(savedFontKey);
-      window.localStorage.setItem(PREFERRED_FONT_STORAGE, savedFontKey);
+    let cancelled = false;
+    void (async () => {
+      const savedFontKey =
+        window.localStorage.getItem(PREFERRED_FONT_STORAGE) ||
+        window.localStorage.getItem(LEGACY_PREFERRED_FONT_STORAGE) ||
+        defaultFontKey;
+      const availableFonts = await listLocalFontOptions();
+      const availableFontKey = availableFonts.some((font) => font.key === savedFontKey)
+        ? savedFontKey
+        : defaultFontKey;
+      if (!cancelled) setPreferredFontKey(availableFontKey);
+      window.localStorage.setItem(PREFERRED_FONT_STORAGE, availableFontKey);
       window.localStorage.removeItem(LEGACY_PREFERRED_FONT_STORAGE);
-    }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function selectPreferredFont(fontKey: string) {

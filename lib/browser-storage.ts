@@ -128,6 +128,24 @@ function toFontOption(font: StoredFont): FontOption {
   };
 }
 
+function isUsableStoredFont(font: StoredFont | undefined) {
+  if (!font?.key?.startsWith("custom:") || !font.fileName || !(font.bytes instanceof ArrayBuffer)) {
+    return false;
+  }
+  const extension = extensionOf(font.fileName);
+  return (
+    allowedExtensions.has(extension) &&
+    font.bytes.byteLength > 0 &&
+    font.bytes.byteLength <= maxLocalFontFileSize &&
+    hasValidFontSignature(new Uint8Array(font.bytes), extension)
+  );
+}
+
+async function removeStoredFont(fontKey: string) {
+  registeredFontKeys.delete(fontKey);
+  await runFontTransaction<undefined>("readwrite", (store) => store.delete(fontKey));
+}
+
 async function registerFontFace(font: StoredFont) {
   if (registeredFontKeys.has(font.key) || typeof FontFace === "undefined") return;
   const face = new FontFace(localFontFamily(font.key), font.bytes);
@@ -182,9 +200,12 @@ export async function listLocalFontOptions() {
   try {
     await migrateLegacyFonts();
     const customFonts = await runFontTransaction<StoredFont[]>("readonly", (store) => store.getAll());
-    customFonts.sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
-    await Promise.all(customFonts.map((font) => registerFontFace(font).catch(() => undefined)));
-    return [...builtInFonts, ...customFonts.map(toFontOption)];
+    const validFonts = customFonts.filter(isUsableStoredFont);
+    const invalidFonts = customFonts.filter((font) => !isUsableStoredFont(font));
+    await Promise.all(invalidFonts.map((font) => removeStoredFont(font.key).catch(() => undefined)));
+    validFonts.sort((a, b) => (b.uploadedAt || "").localeCompare(a.uploadedAt || ""));
+    await Promise.all(validFonts.map((font) => registerFontFace(font).catch(() => undefined)));
+    return [...builtInFonts, ...validFonts.map(toFontOption)];
   } catch {
     return builtInFonts;
   }
@@ -221,7 +242,10 @@ export async function getTransientFontPayload(fontKey: string): Promise<Transien
   if (!fontKey.startsWith("custom:")) return undefined;
   await migrateLegacyFonts();
   const font = await runFontTransaction<StoredFont | undefined>("readonly", (store) => store.get(fontKey));
-  if (!font) return undefined;
+  if (!font || !isUsableStoredFont(font)) {
+    if (font) await removeStoredFont(fontKey).catch(() => undefined);
+    return undefined;
+  }
   return {
     key: font.key,
     name: font.name,

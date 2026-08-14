@@ -8,6 +8,7 @@ import {
   wereadAuthorizationHeaders,
   wereadKeyHint
 } from "@/lib/browser-storage";
+import { readJsonResponse } from "@/lib/client-json";
 
 type ConnectionState = {
   connected: boolean;
@@ -28,7 +29,10 @@ async function verifySkillKey(skillKey: string) {
     cache: "no-store",
     headers: wereadAuthorizationHeaders(skillKey)
   });
-  const data = await response.json();
+  const data = await readJsonResponse<{ error?: string; message: string; summary: WereadSummary }>(
+    response,
+    "微信读书 Skill 激活失败"
+  );
   if (!response.ok) throw new Error(data.error || "微信读书 Skill 激活失败。");
   return data as { message: string; summary: WereadSummary };
 }
@@ -39,7 +43,10 @@ async function loadSummary(skillKey: string) {
     cache: "no-store",
     headers: wereadAuthorizationHeaders(skillKey)
   });
-  const data = await response.json();
+  const data = await readJsonResponse<WereadSummary & { error?: string }>(
+    response,
+    "查询微信读书数据失败"
+  );
   if (!response.ok) throw new Error(data.error || "查询微信读书数据失败。");
   return data as WereadSummary;
 }

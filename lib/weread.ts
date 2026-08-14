@@ -159,12 +159,23 @@ export async function callWereadGatewayWithKey<T extends GatewayResponse>(
     clearTimeout(timeout);
   }
 
+  const responseBody = await response.text();
+  const returnedHtml = /^\s*(?:<!doctype\s+html|<html\b)/i.test(responseBody);
   if (!response.ok) {
-    const detail = await response.text();
+    const detail = returnedHtml ? "上游服务暂时返回异常页面" : responseBody.slice(0, 300);
     throw new Error(`微信读书 skill 调用失败：${response.status} ${detail}`);
   }
 
-  const data = (await response.json()) as T;
+  let data: T;
+  try {
+    data = JSON.parse(responseBody) as T;
+  } catch {
+    throw new Error(
+      returnedHtml
+        ? "微信读书服务暂时返回了异常页面，请稍后重试。"
+        : "微信读书服务返回的数据格式异常，请稍后重试。"
+    );
+  }
   if (data.upgrade_info?.message) {
     throw new Error(`微信读书 skill 需要升级：${data.upgrade_info.message}`);
   }

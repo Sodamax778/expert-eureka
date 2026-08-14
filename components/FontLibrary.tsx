@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { builtInFonts, type FontOption } from "@/lib/font-catalog";
+import { builtInFonts, defaultFontKey, type FontOption } from "@/lib/font-catalog";
 import { listLocalFontOptions, saveLocalFont } from "@/lib/browser-storage";
 
 export function FontLibrary({
@@ -22,7 +22,13 @@ export function FontLibrary({
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function refreshFonts() {
-    setFonts(await listLocalFontOptions());
+    const availableFonts = await listLocalFontOptions();
+    setFonts(availableFonts);
+    if (!availableFonts.some((font) => font.key === selectedFontKey)) {
+      onSelect(defaultFontKey);
+      onLibraryChange();
+      setStatus("原先选择的自定义字体文件已失效，已切换为系统黑体。");
+    }
   }
 
   useEffect(() => {

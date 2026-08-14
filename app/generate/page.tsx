@@ -5,6 +5,7 @@ import { Suspense, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { devices } from "@/lib/devices";
 import { downloadImageAsJpeg } from "@/lib/download-jpeg";
+import { readJsonResponse } from "@/lib/client-json";
 import { templates } from "@/lib/templates";
 
 type GenerateResponse = {
@@ -37,7 +38,7 @@ function GenerateContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ templateKey, deviceKey, orientation })
       });
-      const data = await response.json();
+      const data = await readJsonResponse<GenerateResponse & { error?: string }>(response, "生成失败");
       if (!response.ok) {
         throw new Error(data.error || "生成失败");
       }
