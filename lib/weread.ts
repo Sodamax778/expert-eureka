@@ -1,7 +1,7 @@
 import type { WereadSnapshot } from "./mock-weread";
 
 const WEREAD_GATEWAY = "https://i.weread.qq.com/api/agent/gateway";
-const SKILL_VERSION = "1.0.4";
+const SKILL_VERSION = "1.0.5";
 const CHINA_TIME_OFFSET_MS = 8 * 60 * 60 * 1000;
 
 // 微信读书 Skill 共用一个网关，具体能力由请求体中的 api_name 区分。
