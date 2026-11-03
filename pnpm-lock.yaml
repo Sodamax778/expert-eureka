@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@edgeone/pages-blob':
+        specifier: ^0.0.16
+        version: 0.0.16
       next:
         specifier: 16.2.10
         version: 16.2.10(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -35,6 +38,10 @@ importers:
         version: 6.0.3
 
 packages:
+
+  '@edgeone/pages-blob@0.0.16':
+    resolution: {integrity: sha512-Qk3SHTSvCF7awlKsG5t45FolHd8kVH44yJKeXM21qNq8A1I1mTGUuQWa+j4shwuBdgQTvRHTFBbQxAvKqiR22A==}
+    engines: {node: '>=18.0.0'}
 
   '@emnapi/runtime@1.11.1':
     resolution: {integrity: sha512-vgj7R3y3Wgx24IQaGPA/R6YFXLHVMOZ0uVEyIQPaWs+rd1AzfEMXlAC22FYwO1XkKR6NPsq7mUandH8oIRdZFw==}
@@ -395,6 +402,8 @@ packages:
     engines: {node: '>=10'}
 
 snapshots:
+
+  '@edgeone/pages-blob@0.0.16': {}
 
   '@emnapi/runtime@1.11.1':
     dependencies:

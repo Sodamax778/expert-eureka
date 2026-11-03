@@ -22,6 +22,8 @@
 - API 响应统一使用 `Cache-Control: no-store`，Key 不放入 URL、不写入应用日志。
 - 项目不需要数据库、对象存储或服务端加密密钥。
 
+以上指壁纸生成主功能；新增可选使用统计另使用Pages Blob与云端管理口令，详见文末统计部署说明。统计不保存阅读内容。
+
 ## 技术栈
 
 - Next.js 16 App Router
@@ -71,3 +73,5 @@ lib/custom-fonts.ts          临时字体校验与 WOFF2 子集化
 
 1. [产品设计文档](docs/product-design.md)
 2. [研发接手说明](docs/developer-handoff.md)
+3. [匿名使用统计](docs/ANONYMOUS_ANALYTICS.md)
+4. [APK使用统计与部署](docs/APP_ANALYTICS.md)：新增统计需配置云端环境变量，部署后管理入口为 `/analytics`。部署前及未采集期间不能补算历史人数。

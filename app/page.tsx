@@ -6,6 +6,7 @@ import { CompactConnectionPanel } from "@/components/ConnectionPanel";
 import { FontLibrary } from "@/components/FontLibrary";
 import { SceneOutputs } from "@/components/SceneOutputs";
 import { SkillStatusPill } from "@/components/SkillStatusPill";
+import { trackAnonymousEvent } from "@/lib/anonymous-analytics";
 import { listLocalFontOptions } from "@/lib/browser-storage";
 import { defaultFontKey } from "@/lib/font-catalog";
 import type { TemplateKey } from "@/lib/templates";
@@ -33,6 +34,10 @@ const LEGACY_PREFERRED_FONT_STORAGE = ["xiao", "wen-preferred-font"].join("");
 export default function Home() {
   const [preferredFontKey, setPreferredFontKey] = useState(defaultFontKey);
   const [fontLibraryVersion, setFontLibraryVersion] = useState(0);
+
+  useEffect(() => {
+    trackAnonymousEvent("page_open", { oncePerSession: true });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
