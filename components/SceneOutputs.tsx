@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { downloadImageAsJpeg } from "@/lib/download-jpeg";
+import { trackAnonymousEvent } from "@/lib/anonymous-analytics";
 import { builtInFonts, defaultFontKey, type FontOption } from "@/lib/font-catalog";
 import {
   getTransientFontPayload,
@@ -222,8 +223,10 @@ export function SceneOutputs({
   const generationId = useRef(0);
   const generationAbort = useRef<AbortController | null>(null);
   const previewObjectUrl = useRef<string | null>(null);
+  const previewTrackedForOpen = useRef(false);
 
   function openScene(scene: Scene) {
+    previewTrackedForOpen.current = false;
     if (scene.key === "weekly_receipt") {
       setReceiptExcerpts(null);
       setReceiptExcerptsOpen(false);
@@ -296,6 +299,10 @@ export function SceneOutputs({
       revokeLocalFontPreview(previewObjectUrl.current);
       previewObjectUrl.current = previewImageUrl.startsWith("blob:") ? previewImageUrl : null;
       setResult({ ...data, imageUrl: previewImageUrl });
+      if (!previewTrackedForOpen.current) {
+        previewTrackedForOpen.current = true;
+        trackAnonymousEvent("preview_generated");
+      }
       const returnedExcerpts = data.receiptExcerpts;
       if (scene.key === "weekly_receipt" && Array.isArray(returnedExcerpts)) {
         setReceiptExcerpts(
@@ -422,6 +429,7 @@ export function SceneOutputs({
         filename: `max-${selected.key}-${result.width}x${result.height}.jpg`
       });
       setStatus("JPG 图片已下载。");
+      trackAnonymousEvent("image_downloaded");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "JPG 图片下载失败");
     }

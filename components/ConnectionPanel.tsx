@@ -9,6 +9,7 @@ import {
   wereadKeyHint
 } from "@/lib/browser-storage";
 import { readJsonResponse } from "@/lib/client-json";
+import { trackAnonymousEvent } from "@/lib/anonymous-analytics";
 
 type ConnectionState = {
   connected: boolean;
@@ -73,6 +74,7 @@ export function ConnectionPanel() {
       setConnection(localConnection());
       setSkillKey("");
       setStatus(data.message);
+      trackAnonymousEvent("weread_connected", { oncePerSession: true });
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "激活失败。");
     } finally {
@@ -176,6 +178,7 @@ export function CompactConnectionPanel() {
       setConnection(localConnection());
       setActivationStatus("active");
       setStatus(data.message);
+      trackAnonymousEvent("weread_connected", { oncePerSession: true });
     } catch (error) {
       setActivationStatus("failed");
       setStatus(error instanceof Error ? error.message : "激活失败。");
