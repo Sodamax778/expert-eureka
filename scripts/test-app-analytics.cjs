@@ -32,6 +32,13 @@ const req=(method,data,auth)=>{const request=new Request('https://example.test/a
   assert.equal((await route.POST(req('POST',{...payload,key:'PRIVATE'}))).status,400);assert.equal(memory.size,2);checks++;console.log('PASS private fields rejected before storage');
   assert.equal((await route.POST(req('POST',{padding:'x'.repeat(18000)}))).status,413);checks++;console.log('PASS body size bounded');
   const report=await route.GET(req('GET',null,token));assert.equal(report.status,200);assert.equal((await report.json()).app.dau,1);checks++;console.log('PASS authenticated dashboard report');
+  const oldEvent=event('app_active',{at:now-120*86400000});
+  memory.set(model.eventKey(payload,oldEvent,salt),{at:oldEvent.at});
+  memory.set(model.eventKey(batch([oldEvent],crypto.randomUUID()),oldEvent,salt),{at:oldEvent.at});
+  const lifetime=(await (await route.GET(req('GET',null,token))).json()).app;
+  assert.equal(lifetime.cumulativeInstallations,2);
+  assert.equal(lifetime.devicesInRange,1);
+  checks++;console.log('PASS cumulative instances include older events and deduplicate across periods');
   env.ANALYTICS_HASH_SALT='';assert.equal((await route.POST(req('POST',payload))).status,503);env.ANALYTICS_HASH_SALT=salt;unavailable=true;assert.equal((await route.POST(req('POST',payload))).status,503);checks++;console.log('PASS unconfigured or unavailable storage is not reported as success');
   console.log(checks+' analytics checks passed');
 })().catch(error=>{console.error(error);process.exitCode=1;});

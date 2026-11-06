@@ -5,6 +5,20 @@ import { readAnonymousCounters } from "@/lib/anonymous-analytics-store";
 import { enforceRateLimit } from "@/lib/request-security";
 export const runtime = "nodejs";
 const headers = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
+
+async function countHistoricalInstallations(store: ReturnType<typeof getStore>) {
+  const installations = new Set<string>();
+  let cursor: string | undefined;
+  do {
+    const page = await store.list({ prefix: "events-v1/", paginate: false, cursor, consistency: "strong" });
+    for (const { key } of page.blobs) {
+      const installation = key.split("/")[2];
+      if (installation && /^[0-9a-f]{32}$/.test(installation)) installations.add(installation);
+    }
+    cursor = page.cursor;
+  } while (cursor);
+  return installations.size;
+}
 export async function POST(request: NextRequest) {
   const salt = process.env.ANALYTICS_HASH_SALT;
   if (!salt || salt.length < 32) return NextResponse.json({ error: "Analytics not configured" }, { status: 503, headers });
@@ -39,7 +53,10 @@ export async function GET(request: NextRequest) {
       let cursor: string | undefined;
       do { const page = await store.list({ prefix: "events-v1/" + month, paginate: false, cursor, consistency: "strong" }); keys.push(...page.blobs.map(b => b.key).filter(k => k.split("/")[1] >= start)); cursor = page.cursor; if (keys.length > 100000) return NextResponse.json({ error: "Too much data; choose fewer days" }, { status: 413, headers }); } while (cursor);
     }
-    const web = await readAnonymousCounters(days);
-    return NextResponse.json({ app: summarize(keys, days), web, historicalWebNote: "网页仅有事件次数；未记录去重用户标识，不能换算成历史人数。统计部署前无数据。" }, { headers });
+    const [web, cumulativeInstallations] = await Promise.all([
+      readAnonymousCounters(days),
+      countHistoricalInstallations(store).catch(() => null)
+    ]);
+    return NextResponse.json({ app: { ...summarize(keys, days), cumulativeInstallations }, web, historicalWebNote: "网页仅有事件次数；未记录去重用户标识，不能换算成历史人数。统计部署前无数据。" }, { headers });
   } catch { return NextResponse.json({ error: "Statistics unavailable" }, { status: 503, headers }); }
 }
