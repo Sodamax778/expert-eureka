@@ -1,7 +1,7 @@
 {
-  "versionCode": 59,
-  "notes": "输入框有 Key 时直接校验，空框才读取剪贴板，并新增一键清除。",
-  "versionName": "1.0.7",
-  "downloadUrl": "https://m8mi6m.top/downloads/shubing-wallpaper-1.0.7.apk",
-  "packageName": "cn.shubing.reading.local"
+  "packageName": "cn.shubing.reading.local",
+  "notes": "1、增加检查更新路径.\n2、阅读月历算法优化.\n3、月历增加封面展示.\n4、校验key失败bug修复.",
+  "downloadUrl": "https://m8mi6m.top/downloads/shubing-wallpaper-1.0.8.apk",
+  "versionName": "1.0.8",
+  "versionCode": 60
 }
