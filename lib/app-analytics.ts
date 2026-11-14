@@ -31,11 +31,18 @@ export function summarize(keys: string[], days: number, now = Date.now()) {
   const start = day(now - (days - 1) * 86400000), end = day(now), active = new Set<string>(), week = new Set<string>(), month = new Set<string>(), installs = new Set<string>(), allDevices = new Set<string>();
   const daily: Record<string, { date: string; users: Set<string>; newInstalls: Set<string>; manualSuccess: number; manualFailure: number; autoSuccess: number; autoFailure: number; connected: number; setupComplete: number }> = {};
   const templates: Record<string, number> = { receipt: 0, calendar: 0, cover: 0 }, versions: Record<string, Set<string>> = {};
+  const versionEvents: Record<string, Partial<Record<AppEvent["name"], number>>> = {};
   const seen = new Set<string>();
   for (const key of keys) {
-    if (seen.has(key)) continue; seen.add(key);
+
     const [prefix, date, device, version, name, template, mode, outcome, id] = key.split("/");
     if (prefix !== "events-v1" || !id || date < start || date > end || !eventNames.includes(name as AppEvent["name"])) continue;
+    const eventIdentity = device + "/" + id;
+    if (seen.has(eventIdentity)) continue;
+    seen.add(eventIdentity);
+    const counts = versionEvents[version] ??= {};
+    const eventName = name as AppEvent["name"];
+    counts[eventName] = (counts[eventName] ?? 0) + 1;
     const row = daily[date] ??= { date, users: new Set(), newInstalls: new Set(), manualSuccess: 0, manualFailure: 0, autoSuccess: 0, autoFailure: 0, connected: 0, setupComplete: 0 };
     allDevices.add(device); (versions[version] ??= new Set()).add(device);
     if (name === "install") { row.newInstalls.add(device); installs.add(device); }
@@ -45,5 +52,5 @@ export function summarize(keys: string[], days: number, now = Date.now()) {
     if (name === "wallpaper_selected" && template in templates) templates[template]++;
     if (name === "wallpaper_update" && (mode === "manual" || mode === "auto") && (outcome === "success" || outcome === "failure")) row[(mode + (outcome === "success" ? "Success" : "Failure")) as "manualSuccess"]++;
   }
-  return { range: { start, end, days }, devicesInRange: allDevices.size, newInstallations: installs.size, dau: active.size, wau: days >= 7 ? week.size : null, mau: days >= 30 ? month.size : null, templates, versions: Object.fromEntries(Object.entries(versions).map(([v, ids]) => [v, ids.size])), daily: Object.values(daily).sort((a,b) => a.date.localeCompare(b.date)).map(row => ({ ...row, users: row.users.size, newInstalls: row.newInstalls.size })), note: "仅含开启统计的实例；首次启用、清空数据、重装或关闭后重新开启会计为新统计实例，不代表精确安装量或人数。后台更新不计活跃，未采集的历史无法补算。" };
+  return { range: { start, end, days }, devicesInRange: allDevices.size, newInstallations: installs.size, dau: active.size, wau: days >= 7 ? week.size : null, mau: days >= 30 ? month.size : null, templates, versionEvents, versions: Object.fromEntries(Object.entries(versions).map(([v, ids]) => [v, ids.size])), daily: Object.values(daily).sort((a,b) => a.date.localeCompare(b.date)).map(row => ({ ...row, users: row.users.size, newInstalls: row.newInstalls.size })), note: "仅含开启统计的实例；首次启用、清空数据、重装或关闭后重新开启会计为新统计实例，不代表精确安装量或人数。后台更新不计活跃，未采集的历史无法补算。" };
 }
