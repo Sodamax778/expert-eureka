@@ -2,6 +2,6 @@
   "packageName": "cn.shubing.reading.local",
   "versionCode": 57,
   "versionName": "1.0.5",
-  "downloadUrl": "https://github.com/Sodamax778/expert-eureka/releases/download/untagged-22d27b6319eda8d5de01/shubing-wallpaper-1.0.5.apk",
+  "downloadUrl": "https://github.com/Sodamax778/expert-eureka/releases/download/v1.0.5/shubing-wallpaper-1.0.5.apk",
   "notes": "阅读月历改进书名选择，支持仅展示书籍封面、切换月份和顶部贴纸。底部可切换猫猫花边或两行书单。"
 }
